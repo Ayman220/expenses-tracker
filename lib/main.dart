@@ -1,4 +1,6 @@
 import 'package:expense_tracker/firebase_options.dart';
+import 'package:expense_tracker/screens/groups/add_group.dart';
+import 'package:expense_tracker/screens/groups/group_details.dart';
 import 'package:expense_tracker/screens/wrapper.dart';
 import 'package:expense_tracker/services/auth.dart';
 import 'package:flutter/material.dart';
@@ -55,8 +57,11 @@ class ExpenseTrackerAppState extends State<ExpenseTrackerApp> {
           useMaterial3: true,
         ),
         themeMode: _themeMode, // Use the current theme mode
-        // home: HomeScreen(toggleTheme: _toggleTheme),
         home: Wrapper(toggleTheme: _toggleTheme),
+        routes: {
+          '/add-group': (context) => const AddGroupScreen(),
+          '/group-details': (context) => const GroupDetails(),
+        },
       ),
     );
   }

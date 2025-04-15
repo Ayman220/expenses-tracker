@@ -1,13 +1,52 @@
-import 'package:expense_tracker/services/auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:expense_tracker/services/auth.dart';
 
-class Home extends StatelessWidget {
+class Home extends StatefulWidget {
   final VoidCallback toggleTheme;
   const Home({super.key, required this.toggleTheme});
 
   @override
+  State<Home> createState() => _HomeState();
+}
+
+class _HomeState extends State<Home> {
+  late Future<List<DocumentSnapshot>>
+  _loadGroups; // Change to match the return type
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGroups = _fetchGroups(); // Initialize with the correct future
+  }
+
+  Future<List<DocumentSnapshot>> _fetchGroups() async {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+
+    // Fetch groups where the user is a member
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('groups')
+            .where('members', arrayContains: userId)
+            .orderBy('createdAt', descending: true)
+            .get();
+
+    return snapshot.docs; // Return list of documents
+  }
+
+  Stream<QuerySnapshot> _groupStream(String userId) {
+    return FirebaseFirestore.instance
+        .collection('groups')
+        .where('members', arrayContains: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final AuthService authService = AuthService();
+    final authService = AuthService();
+    final userId = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
       appBar: AppBar(
@@ -20,7 +59,7 @@ class Home extends StatelessWidget {
         centerTitle: true,
         actions: [
           IconButton(
-            onPressed: toggleTheme,
+            onPressed: widget.toggleTheme,
             tooltip: "Toggle Theme",
             icon: const Icon(Icons.brightness_6_rounded),
           ),
@@ -54,11 +93,63 @@ class Home extends StatelessWidget {
           ),
         ],
       ),
-      body: const Center(
-        child: Text(
-          "Welcome to Expense Groups",
-          style: TextStyle(fontSize: 18),
-        ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _groupStream(userId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return const Center(child: Text('Error loading groups'));
+          }
+
+          final docs = snapshot.data?.docs ?? [];
+
+          if (docs.isEmpty) {
+            return const Center(
+              child: Text(
+                "No groups yet. Tap + to create one!",
+                style: TextStyle(fontSize: 16),
+              ),
+            );
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            itemCount: docs.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final doc = docs[index];
+              final data = doc.data() as Map<String, dynamic>;
+              final groupName = data['name'] ?? 'Unnamed Group';
+
+              return Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  title: Text(groupName),
+                  onTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      '/group-details',
+                      arguments: {'groupId': doc.id, 'groupName': groupName},
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await Navigator.pushNamed(context, '/add-group');
+        },
+        tooltip: 'Create Group',
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: const Icon(Icons.add),
       ),
     );
   }
