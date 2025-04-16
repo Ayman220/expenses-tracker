@@ -1,4 +1,5 @@
 import 'package:expense_tracker/firebase_options.dart';
+import 'package:expense_tracker/screens/groups/add_expense.dart';
 import 'package:expense_tracker/screens/groups/add_group.dart';
 import 'package:expense_tracker/screens/groups/group_details.dart';
 import 'package:expense_tracker/screens/wrapper.dart';
@@ -60,7 +61,15 @@ class ExpenseTrackerAppState extends State<ExpenseTrackerApp> {
         home: Wrapper(toggleTheme: _toggleTheme),
         routes: {
           '/add-group': (context) => const AddGroupScreen(),
-          '/group-details': (context) => const GroupDetails(),
+
+          '/group-details': (context) {
+            final args =
+                ModalRoute.of(context)!.settings.arguments
+                    as Map<String, dynamic>;
+            return GroupDetails(groupId: args['groupId'] as String);
+          },
+
+          '/add-expense': (context) => const AddExpense(),
         },
       ),
     );

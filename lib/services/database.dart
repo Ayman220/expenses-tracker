@@ -3,16 +3,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class DatabaseService {
   // Collection reference
   final CollectionReference groups = FirebaseFirestore.instance.collection("groups");
+  final CollectionReference users = FirebaseFirestore.instance.collection("users");
+
+  Future<void> createUser(String name, String email, String userId) async {
+    await users.doc(userId)
+              .set({
+            'name': name,
+            'email': email,
+            'createdAt': FieldValue.serverTimestamp(),
+          });;
+  }
 
   // Create a new group
   Future<void> createGroup(String groupName, String userId) async {
-    DocumentReference groupRef = await groups.add({
+    await groups.add({
       'name': groupName,
       'members': [userId],
       'createdAt': FieldValue.serverTimestamp(),
     });
-
-    print("Group created with ID: ${groupRef.id}");
   }
 
   // Add a user to an existing group

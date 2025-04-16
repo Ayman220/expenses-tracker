@@ -2,95 +2,164 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class GroupDetails extends StatefulWidget {
-  const GroupDetails({super.key});
+  final String groupId;
+
+  const GroupDetails({super.key, required this.groupId});
 
   @override
   State<GroupDetails> createState() => _GroupDetailsState();
 }
 
 class _GroupDetailsState extends State<GroupDetails> {
-  late String groupId;
-  late String groupName;
+  late Future<DocumentSnapshot> _groupFuture;
+  late Future<List<Map<String, String>>> _memberInfoFuture;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final args = ModalRoute.of(context)?.settings.arguments as Map?;
-    if (args != null) {
-      groupId = args['groupId'];
-      groupName = args['groupName'];
-    }
+  void initState() {
+    super.initState();
+    _groupFuture =
+        FirebaseFirestore.instance
+            .collection('groups')
+            .doc(widget.groupId)
+            .get();
+
+    _memberInfoFuture = _fetchMemberInfo(); // Initialize here
   }
 
-  Stream<QuerySnapshot> _getExpensesStream() {
-    return FirebaseFirestore.instance
-        .collection('groups')
-        .doc(groupId)
-        .collection('expenses')
-        .orderBy('createdAt', descending: true)
-        .snapshots();
+  Future<List<Map<String, String>>> _fetchMemberInfo() async {
+    try {
+      final groupDoc =
+          await FirebaseFirestore.instance
+              .collection('groups')
+              .doc(widget.groupId)
+              .get();
+
+      final memberIds = List<String>.from(groupDoc['members'] ?? []);
+
+      final userDocs = await Future.wait(
+        memberIds.map(
+          (id) => FirebaseFirestore.instance.collection('users').doc(id).get(),
+        ),
+      );
+
+      return userDocs.map((doc) {
+        final data = doc.data();
+        return {
+          'uid': doc.id,
+          'name':
+              (data?['name'] as String?) ??
+              'Unknown', // Explicitly cast to String? and handle null
+        };
+      }).toList();
+    } catch (e) {
+      return [
+        {'uid': 'error', 'name': 'Failed to load'},
+      ];
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(groupName),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        title: const Text('Group Details'),
+        centerTitle: true,
+        elevation: 2,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _getExpensesStream(),
+      body: FutureBuilder<DocumentSnapshot>(
+        future: _groupFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Text("No expenses yet. Tap + to add one."),
-            );
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const Center(child: Text('Group not found.'));
           }
 
-          final expenses = snapshot.data!.docs;
+          final groupData = snapshot.data!.data() as Map<String, dynamic>;
+          final groupName = groupData['name'] ?? 'Unnamed Group';
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: expenses.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              final data = expenses[index].data() as Map<String, dynamic>;
-              final title = data['title'] ?? 'Expense';
-              final amount = data['amount'] ?? 0;
-              final paidBy = data['paidByName'] ?? 'Someone';
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      groupName,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    FutureBuilder<List<Map<String, String>>>(
+                      future: _memberInfoFuture,
+                      builder: (context, membersSnapshot) {
+                        if (membersSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const CircularProgressIndicator(); // Show loading indicator
+                        }
+                        if (!membersSnapshot.hasData) {
+                          return const Text(
+                            "No members available",
+                          ); //Or return an empty container
+                        }
 
-              return Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                        final members = membersSnapshot.data!;
+
+                        return ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pushNamed(
+                              context,
+                              '/add-expense',
+                              arguments: {
+                                'groupId': widget.groupId,
+                                'groupName': groupName,
+                                'members': members,
+                              },
+                            );
+                          },
+                          icon: const Icon(Icons.add),
+                          label: const Text("Add expenses"),
+                        );
+                      },
+                    ),
+                  ],
                 ),
-                child: ListTile(
-                  title: Text(title),
-                  subtitle: Text("Paid by $paidBy"),
-                  trailing: Text("₹$amount"),
+                const SizedBox(height: 16),
+                const Text(
+                  'Members:',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
-              );
-            },
+                const SizedBox(height: 8),
+                FutureBuilder<List<Map<String, String>>>(
+                  future: _memberInfoFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const CircularProgressIndicator();
+                    }
+
+                    if (!snapshot.hasData) {
+                      return const Text("Failed to load members");
+                    }
+
+                    final members = snapshot.data!;
+                    return Wrap(
+                      spacing: 8.0,
+                      children:
+                          members
+                              .map((m) => Chip(label: Text(m['name'] ?? '')))
+                              .toList(),
+                    );
+                  },
+                ),
+              ],
+            ),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(
-            context,
-            '/add-expense',
-            arguments: {
-              'groupId': groupId,
-              'groupName': groupName,
-            },
-          );
-        },
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        tooltip: 'Add Expense',
-        child: const Icon(Icons.add),
       ),
     );
   }

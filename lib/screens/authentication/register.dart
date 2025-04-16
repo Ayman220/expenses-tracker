@@ -1,4 +1,5 @@
 import 'package:expense_tracker/services/auth.dart';
+import 'package:expense_tracker/services/database.dart';
 import 'package:flutter/material.dart';
 
 class Register extends StatefulWidget {
@@ -11,8 +12,10 @@ class Register extends StatefulWidget {
 
 class _RegisterState extends State<Register> {
   final AuthService _authService = AuthService();
+  final DatabaseService databaseService = DatabaseService();
   final _formKey = GlobalKey<FormState>();
 
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -22,6 +25,7 @@ class _RegisterState extends State<Register> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -44,6 +48,19 @@ class _RegisterState extends State<Register> {
           error = 'Failed to register. Please try again.';
           loading = false;
         });
+      } else {
+        // Create user profile in Firestore
+        try {
+          await databaseService.createUser(
+            _nameController.text.trim(),
+            _emailController.text.trim(),
+            result.uid,
+          );
+        } catch (e) {
+          setState(() {
+            error = 'Error saving user info: $e';
+          });
+        }
       }
     }
   }
@@ -60,8 +77,8 @@ class _RegisterState extends State<Register> {
             onPressed: () {
               widget.toggleView();
             },
-            icon: Icon(Icons.person),
-            label: Text("sign in"),
+            icon: const Icon(Icons.person),
+            label: const Text("sign in"),
           ),
         ],
       ),
@@ -77,6 +94,21 @@ class _RegisterState extends State<Register> {
                 const Icon(Icons.person_add, size: 80, color: Colors.blue),
                 const SizedBox(height: 20),
                 TextFormField(
+                  controller: _nameController,
+                  enabled: !loading,
+                  decoration: const InputDecoration(
+                    labelText: "Name",
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                  validator:
+                      (val) =>
+                          val == null || val.trim().isEmpty
+                              ? 'Enter your name'
+                              : null,
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
                   controller: _emailController,
                   enabled: !loading,
                   decoration: const InputDecoration(
@@ -86,8 +118,7 @@ class _RegisterState extends State<Register> {
                   ),
                   keyboardType: TextInputType.emailAddress,
                   validator: (val) {
-                    const pattern =
-                        r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
+                    const pattern = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
                     final regex = RegExp(pattern);
 
                     if (val == null || val.isEmpty) {
@@ -107,9 +138,11 @@ class _RegisterState extends State<Register> {
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility),
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
                       onPressed: () {
                         setState(() {
                           _obscurePassword = !_obscurePassword;
@@ -118,34 +151,33 @@ class _RegisterState extends State<Register> {
                     ),
                   ),
                   obscureText: _obscurePassword,
-                  validator: (val) =>
-                      val != null && val.length >= 6
-                          ? null
-                          : 'Password must be at least 6 characters',
+                  validator:
+                      (val) =>
+                          val != null && val.length >= 6
+                              ? null
+                              : 'Password must be at least 6 characters',
                 ),
                 const SizedBox(height: 30),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    icon: loading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.person_add),
+                    icon:
+                        loading
+                            ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                            : const Icon(Icons.person_add),
                     label: Text(loading ? "Registering..." : "Register"),
                     onPressed: loading ? null : _register,
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  error,
-                  style: const TextStyle(color: Colors.red),
-                ),
+                Text(error, style: const TextStyle(color: Colors.red)),
               ],
             ),
           ),

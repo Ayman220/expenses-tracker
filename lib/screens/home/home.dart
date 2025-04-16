@@ -12,27 +12,10 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  late Future<List<DocumentSnapshot>>
-  _loadGroups; // Change to match the return type
 
   @override
   void initState() {
     super.initState();
-    _loadGroups = _fetchGroups(); // Initialize with the correct future
-  }
-
-  Future<List<DocumentSnapshot>> _fetchGroups() async {
-    final userId = FirebaseAuth.instance.currentUser!.uid;
-
-    // Fetch groups where the user is a member
-    final snapshot =
-        await FirebaseFirestore.instance
-            .collection('groups')
-            .where('members', arrayContains: userId)
-            .orderBy('createdAt', descending: true)
-            .get();
-
-    return snapshot.docs; // Return list of documents
   }
 
   Stream<QuerySnapshot> _groupStream(String userId) {
