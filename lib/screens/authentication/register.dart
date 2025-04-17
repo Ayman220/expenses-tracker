@@ -1,50 +1,66 @@
 import 'package:expense_tracker/controllers/auth_controller.dart';
+import 'package:expense_tracker/helpers/snackbar.dart';
 import 'package:expense_tracker/services/database.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class Register extends StatelessWidget {
+class Register extends StatefulWidget {
   final Function toggleView;
   const Register({super.key, required this.toggleView});
 
   @override
-  Widget build(BuildContext context) {
-    final authController = Get.find<AuthController>();
-    final databaseService = DatabaseService();
-    final formKey = GlobalKey<FormState>();
-    final loading = false.obs;
-    final obscurePassword = true.obs;
+  State<Register> createState() => _RegisterState();
+}
 
-    final TextEditingController nameController = TextEditingController();
-    final TextEditingController emailController = TextEditingController();
-    final TextEditingController passwordController = TextEditingController();
+class _RegisterState extends State<Register> {
+  final authController = Get.find<AuthController>();
+  final databaseService = DatabaseService();
+  final formKey = GlobalKey<FormState>();
+  final loading = false.obs;
+  final obscurePassword = true.obs;
 
-    Future<void> register() async {
-      if (formKey.currentState!.validate()) {
-        loading.value = true;
-        try {
-          final UserCredential? result = await authController.registerWithEmailAndPassword(
-            emailController.text.trim(),
-            passwordController.text,
-          );
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
 
-          if (result != null) {
-            // Create user profile in Firestore
-            await databaseService.createUser(
+  Future<void> register() async {
+    if (formKey.currentState!.validate()) {
+      // Dismiss keyboard
+      FocusScope.of(context).unfocus();
+
+      loading.value = true;
+      try {
+        await authController
+            .registerWithEmailAndPassword(
               nameController.text.trim(),
               emailController.text.trim(),
-              result.user!.uid,
+              passwordController.text,
             );
-          }
-        } catch (e) {
-          Get.snackbar('Error', 'Failed to register: $e');
-        } finally {
+      } catch (e) {
+        if (mounted) {
+          showErrorMessage(
+            'Error',
+            'Failed to register: ${e.toString()}',
+          );
+        }
+      } finally {
+        if (mounted) {
           loading.value = false;
         }
       }
     }
+  }
 
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Register"),
@@ -54,7 +70,7 @@ class Register extends StatelessWidget {
         scrolledUnderElevation: 0,
         actions: [
           TextButton.icon(
-            onPressed: () => toggleView(),
+            onPressed: () => widget.toggleView(),
             icon: const Icon(Icons.person),
             label: const Text("sign in"),
           ),
@@ -109,42 +125,47 @@ class Register extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 20),
-                Obx(() => TextFormField(
-                      controller: passwordController,
-                      enabled: !loading.value,
-                      obscureText: obscurePassword.value,
-                      decoration: InputDecoration(
-                        labelText: "Password",
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.lock),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscurePassword.value
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                          ),
-                          onPressed: () => obscurePassword.toggle(),
+                Obx(
+                  () => TextFormField(
+                    controller: passwordController,
+                    enabled: !loading.value,
+                    obscureText: obscurePassword.value,
+                    decoration: InputDecoration(
+                      labelText: "Password",
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscurePassword.value
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                         ),
+                        onPressed: () => obscurePassword.toggle(),
                       ),
-                      validator: (val) {
-                        if (val == null || val.isEmpty) {
-                          return 'Enter your password';
-                        } else if (val.length < 6) {
-                          return 'Password must be at least 6 characters';
-                        }
-                        return null;
-                      },
-                    )),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return 'Enter your password';
+                      } else if (val.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
                 const SizedBox(height: 20),
-                Obx(() => ElevatedButton(
-                      onPressed: loading.value ? null : register,
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
-                      ),
-                      child: loading.value
-                          ? const CircularProgressIndicator()
-                          : const Text('Register'),
-                    )),
+                Obx(
+                  () => ElevatedButton(
+                    onPressed: loading.value ? null : register,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child:
+                        loading.value
+                            ? const CircularProgressIndicator()
+                            : const Text('Register'),
+                  ),
+                ),
               ],
             ),
           ),

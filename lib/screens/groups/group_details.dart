@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:expense_tracker/screens/groups/add_member.dart';
 
 class GroupDetails extends StatefulWidget {
   final String groupId;
@@ -168,38 +169,71 @@ class _GroupDetailsState extends State<GroupDetails> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
-                FutureBuilder<List<Map<String, String>>>(
-                  future: _memberInfoFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
-                    }
+                Row(
+                  children: [
+                    Expanded(
+                      child: FutureBuilder<List<Map<String, String>>>(
+                        future: _memberInfoFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
 
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Text(
-                          "Error loading members: ${snapshot.error}",
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      );
-                    }
+                          if (snapshot.hasError) {
+                            return Center(
+                              child: Text(
+                                "Error loading members: ${snapshot.error}",
+                                style: const TextStyle(color: Colors.red),
+                              ),
+                            );
+                          }
 
-                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(
-                        child: Text("No members in this group"),
-                      );
-                    }
+                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                            return const Center(
+                              child: Text("No members in this group"),
+                            );
+                          }
 
-                    final members = snapshot.data!;
-                    return Wrap(
-                      spacing: 8.0,
-                      children: members
-                          .map((m) => Chip(label: Text(m['name'] ?? '')))
-                          .toList(),
-                    );
-                  },
+                          final members = snapshot.data!;
+                          return Wrap(
+                            spacing: 8.0,
+                            children: members
+                                .map((m) => Chip(label: Text(m['name'] ?? '')))
+                                .toList(),
+                          );
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.person_add),
+                      onPressed: () async {
+                        final groupDoc = await FirebaseFirestore.instance
+                            .collection('groups')
+                            .doc(widget.groupId)
+                            .get();
+                        
+                        if (!groupDoc.exists) return;
+                        
+                        final existingMembers = List<String>.from(groupDoc['members'] ?? []);
+                        
+                        final result = await Get.to(
+                          () => AddMember(
+                            groupId: widget.groupId,
+                            existingMembers: existingMembers,
+                          ),
+                        );
+                        
+                        if (result == true) {
+                          // Refresh the member list
+                          setState(() {
+                            _memberInfoFuture = _fetchMemberInfo();
+                          });
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),

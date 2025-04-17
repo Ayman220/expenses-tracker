@@ -2,20 +2,32 @@ import 'package:expense_tracker/controllers/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class SignIn extends StatelessWidget {
+class SignIn extends StatefulWidget {
   final Function toggleView;
   const SignIn({super.key, required this.toggleView});
 
   @override
+  State<SignIn> createState() => _SignInState();
+}
+
+class _SignInState extends State<SignIn> {
+  final authController = Get.find<AuthController>();
+  final formKey = GlobalKey<FormState>();
+  final loading = false.obs;
+  final obscurePassword = true.obs;
+
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final authController = Get.find<AuthController>();
-    final formKey = GlobalKey<FormState>();
-    final loading = false.obs;
-    final obscurePassword = true.obs;
-
-    final TextEditingController emailController = TextEditingController();
-    final TextEditingController passwordController = TextEditingController();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Sign In"),
@@ -25,7 +37,7 @@ class SignIn extends StatelessWidget {
         scrolledUnderElevation: 0,
         actions: [
           TextButton.icon(
-            onPressed: () => toggleView(),
+            onPressed: () => widget.toggleView(),
             icon: const Icon(Icons.person),
             label: const Text("register"),
           ),
@@ -64,56 +76,64 @@ class SignIn extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 20),
-                Obx(() => TextFormField(
-                      controller: passwordController,
-                      enabled: !loading.value,
-                      obscureText: obscurePassword.value,
-                      decoration: InputDecoration(
-                        labelText: "Password",
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.lock),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscurePassword.value
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                          ),
-                          onPressed: () => obscurePassword.toggle(),
+                Obx(
+                  () => TextFormField(
+                    controller: passwordController,
+                    enabled: !loading.value,
+                    obscureText: obscurePassword.value,
+                    decoration: InputDecoration(
+                      labelText: "Password",
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscurePassword.value
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                         ),
+                        onPressed: () => obscurePassword.toggle(),
                       ),
-                      validator: (val) {
-                        if (val == null || val.isEmpty) {
-                          return 'Enter your password';
-                        } else if (val.length < 6) {
-                          return 'Password must be at least 6 characters';
-                        }
-                        return null;
-                      },
-                    )),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return 'Enter your password';
+                      } else if (val.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
                 const SizedBox(height: 20),
-                Obx(() => ElevatedButton(
-                      onPressed: loading.value
-                          ? null
-                          : () async {
+                Obx(
+                  () => ElevatedButton(
+                    onPressed:
+                        loading.value
+                            ? null
+                            : () async {
+                              FocusScope.of(context).unfocus();
                               if (formKey.currentState!.validate()) {
                                 loading.value = true;
                                 try {
-                                  await authController.signInWithEmailAndPassword(
-                                    emailController.text,
-                                    passwordController.text,
-                                  );
+                                  await authController
+                                      .signInWithEmailAndPassword(
+                                        emailController.text,
+                                        passwordController.text,
+                                      );
                                 } finally {
                                   loading.value = false;
                                 }
                               }
                             },
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
-                      ),
-                      child: loading.value
-                          ? const CircularProgressIndicator()
-                          : const Text('Sign In'),
-                    )),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child:
+                        loading.value
+                            ? const CircularProgressIndicator()
+                            : const Text('Sign In'),
+                  ),
+                ),
               ],
             ),
           ),
