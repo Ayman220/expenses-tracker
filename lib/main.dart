@@ -1,77 +1,59 @@
+import 'package:expense_tracker/controllers/auth_controller.dart';
+import 'package:expense_tracker/controllers/theme_controller.dart';
 import 'package:expense_tracker/firebase_options.dart';
 import 'package:expense_tracker/screens/groups/add_expense.dart';
 import 'package:expense_tracker/screens/groups/add_group.dart';
 import 'package:expense_tracker/screens/groups/group_details.dart';
 import 'package:expense_tracker/screens/wrapper.dart';
-import 'package:expense_tracker/services/auth.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'models/user.dart' as app_user;
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  // Initialize controllers
+  Get.put(ThemeController());
+  Get.put(AuthController());
+
   runApp(const ExpenseTrackerApp());
 }
 
-class ExpenseTrackerApp extends StatefulWidget {
+class ExpenseTrackerApp extends StatelessWidget {
   const ExpenseTrackerApp({super.key});
 
   @override
-  ExpenseTrackerAppState createState() => ExpenseTrackerAppState();
-}
-
-class ExpenseTrackerAppState extends State<ExpenseTrackerApp> {
-  ThemeMode _themeMode = ThemeMode.system;
-
-  void _toggleTheme() {
-    setState(() {
-      if (_themeMode == ThemeMode.light) {
-        _themeMode = ThemeMode.dark;
-      } else {
-        _themeMode = ThemeMode.light;
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return StreamProvider<app_user.User?>.value(
-      value: AuthService().user,
-      initialData: null,
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blueAccent,
-            brightness: Brightness.light,
-          ),
-          useMaterial3: true,
+    final themeController = Get.find<ThemeController>();
+    
+    return Obx(() => GetMaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blueAccent,
+          brightness: Brightness.light,
         ),
-        darkTheme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blueAccent,
-            brightness: Brightness.dark,
-          ),
-          useMaterial3: true,
-        ),
-        themeMode: _themeMode, // Use the current theme mode
-        home: Wrapper(toggleTheme: _toggleTheme),
-        routes: {
-          '/add-group': (context) => const AddGroupScreen(),
-
-          '/group-details': (context) {
-            final args =
-                ModalRoute.of(context)!.settings.arguments
-                    as Map<String, dynamic>;
-            return GroupDetails(groupId: args['groupId'] as String);
-          },
-
-          '/add-expense': (context) => const AddExpense(),
-        },
+        useMaterial3: true,
       ),
-    );
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blueAccent,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
+      themeMode: themeController.themeMode.value,
+      home: const Wrapper(),
+      getPages: [
+        GetPage(name: '/', page: () => const Wrapper()),
+        GetPage(name: '/add-group', page: () => const AddGroupScreen()),
+        GetPage(
+          name: '/group-details',
+          page: () => GroupDetails(groupId: Get.arguments['groupId']),
+        ),
+        GetPage(name: '/add-expense', page: () => const AddExpense()),
+      ],
+    ));
   }
 }

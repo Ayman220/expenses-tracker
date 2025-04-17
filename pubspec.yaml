@@ -39,6 +39,7 @@ dependencies:
   path_provider: ^2.0.15
   firebase_auth: ^5.5.2
   firebase_core: ^3.13.0
+  get: ^4.6.6
   provider: ^6.1.4
   flutter_spinkit: ^5.2.1
   cloud_firestore: ^5.6.6

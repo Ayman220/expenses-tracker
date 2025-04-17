@@ -1,35 +1,21 @@
-import 'package:expense_tracker/services/auth.dart';
+import 'package:expense_tracker/controllers/auth_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
-class SignIn extends StatefulWidget {
-
+class SignIn extends StatelessWidget {
   final Function toggleView;
   const SignIn({super.key, required this.toggleView});
 
   @override
-  State<SignIn> createState() => _SignInState();
-}
-
-class _SignInState extends State<SignIn> {
-  final AuthService _authService = AuthService();
-  final _formKey = GlobalKey<FormState>();
-  bool _obscurePassword = true;
-
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-
-  String error = '';
-  bool loading = false;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final authController = Get.find<AuthController>();
+    final _formKey = GlobalKey<FormState>();
+    final _obscurePassword = true.obs;
+    final _loading = false.obs;
+
+    final TextEditingController _emailController = TextEditingController();
+    final TextEditingController _passwordController = TextEditingController();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Sign In"),
@@ -37,16 +23,14 @@ class _SignInState extends State<SignIn> {
         elevation: 2,
         actions: [
           TextButton.icon(
-            onPressed: () {
-              widget.toggleView();
-            },
-            icon: Icon(Icons.person),
-            label: Text("register"),
+            onPressed: () => toggleView(),
+            icon: const Icon(Icons.person),
+            label: const Text("register"),
           ),
         ],
       ),
       body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(), // Hide keyboard
+        onTap: () => FocusScope.of(context).unfocus(),
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
           child: Form(
@@ -58,7 +42,7 @@ class _SignInState extends State<SignIn> {
                 const SizedBox(height: 20),
                 TextFormField(
                   controller: _emailController,
-                  enabled: !loading,
+                  enabled: !_loading.value,
                   decoration: const InputDecoration(
                     labelText: "Email",
                     border: OutlineInputBorder(),
@@ -78,78 +62,56 @@ class _SignInState extends State<SignIn> {
                   },
                 ),
                 const SizedBox(height: 20),
-                TextFormField(
-                  controller: _passwordController,
-                  enabled: !loading,
-                  decoration: InputDecoration(
-                    labelText: "Password",
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                Obx(() => TextFormField(
+                      controller: _passwordController,
+                      enabled: !_loading.value,
+                      obscureText: _obscurePassword.value,
+                      decoration: InputDecoration(
+                        labelText: "Password",
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword.value
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => _obscurePassword.toggle(),
+                        ),
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Enter your password';
+                        } else if (val.length < 6) {
+                          return 'Password must be at least 6 characters';
+                        }
+                        return null;
                       },
-                    ),
-                  ),
-                  obscureText: _obscurePassword,
-                  validator:
-                      (val) =>
-                          val != null && val.length >= 6
-                              ? null
-                              : 'Password must be at least 6 characters',
-                ),
-                const SizedBox(height: 30),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    icon:
-                        loading
-                            ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                            : const Icon(Icons.login),
-                    label: Text(loading ? "Signing in..." : "Sign In"),
-                    onPressed:
-                        loading
-                            ? null
-                            : () async {
+                    )),
+                const SizedBox(height: 20),
+                Obx(() => ElevatedButton(
+                      onPressed: _loading.value
+                          ? null
+                          : () async {
                               if (_formKey.currentState!.validate()) {
-                                setState(() {
-                                  loading = true;
-                                  error = '';
-                                });
-
-                                final result = await _authService
-                                    .signInWithEmailAndPassword(
-                                      _emailController.text.trim(),
-                                      _passwordController.text,
-                                    );
-
-                                if (result == null) {
-                                  setState(() {
-                                    loading = false;
-                                    error =
-                                        'Could not sign in with those credentials';
-                                  });
+                                _loading.value = true;
+                                try {
+                                  await authController.signInWithEmailAndPassword(
+                                    _emailController.text,
+                                    _passwordController.text,
+                                  );
+                                } finally {
+                                  _loading.value = false;
                                 }
                               }
                             },
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(error, style: const TextStyle(color: Colors.red)),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
+                      child: _loading.value
+                          ? const CircularProgressIndicator()
+                          : const Text('Sign In'),
+                    )),
               ],
             ),
           ),

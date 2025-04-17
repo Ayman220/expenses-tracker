@@ -1,18 +1,18 @@
-import 'package:expense_tracker/models/user.dart' as app_user;
+import 'package:expense_tracker/controllers/auth_controller.dart';
 import 'package:expense_tracker/screens/authentication/authenticate.dart';
 import 'package:expense_tracker/screens/home/home.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:get/get.dart';
 
 class Wrapper extends StatelessWidget {
-  final VoidCallback toggleTheme;
-  const Wrapper({super.key, required this.toggleTheme});
+  const Wrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final app_user.User? user = Provider.of<app_user.User?>(context);
+    final authController = Get.find<AuthController>();
 
-    // Return either Home or Authenticate widget
-    return user == null ? Authenticate() : Home(toggleTheme: toggleTheme,);
+    return Obx(() => authController.user.value == null
+        ? const Authenticate()
+        : const Home());
   }
 }
