@@ -49,99 +49,102 @@ class _SplitOptionsState extends State<SplitOptions> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Split Options'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        actions: [
-          TextButton(
-            onPressed: () {
-              Get.back(result: {
-                'splits': _splits,
-                'splitType': _splitType,
-              });
-            },
-            child: const Text('Done'),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _updateEqualSplit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _splitType == 'equal'
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
-                    ),
-                    child: const Text('Evenly'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _splitType = 'unequal';
-                        // Initialize with equal amounts based on the total expense
-                        final totalAmount = Get.arguments['amount'] as double? ?? 0.0;
-                        final share = totalAmount / widget.members.length;
-                        _splits = {
-                          for (final member in widget.members)
-                            member['uid']!: share,
-                        };
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _splitType == 'unequal'
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
-                    ),
-                    child: const Text('Unevenly'),
-                  ),
-                ),
-              ],
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Split Options'),
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          actions: [
+            TextButton(
+              onPressed: () {
+                Get.back(result: {
+                  'splits': _splits,
+                  'splitType': _splitType,
+                });
+              },
+              child: const Text('Done'),
             ),
-            const SizedBox(height: 24),
-            if (_splitType == 'unequal')
-              ...widget.members.map((member) {
-                final userId = member['uid']!;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        member['name']!,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: TextEditingController(
-                          text: (_splits[userId] ?? 0.0).toStringAsFixed(2),
-                        ),
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (value) => _updateAmountSplit(userId, value),
-                      ),
-                    ],
-                  ),
-                );
-              }),
           ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _updateEqualSplit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _splitType == 'equal'
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
+                      ),
+                      child: const Text('Evenly'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _splitType = 'unequal';
+                          // Initialize with equal amounts based on the total expense
+                          final totalAmount = Get.arguments['amount'] as double? ?? 0.0;
+                          final share = totalAmount / widget.members.length;
+                          _splits = {
+                            for (final member in widget.members)
+                              member['uid']!: share,
+                          };
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _splitType == 'unequal'
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
+                      ),
+                      child: const Text('Unevenly'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              if (_splitType == 'unequal')
+                ...widget.members.map((member) {
+                  final userId = member['uid']!;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          member['name']!,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: TextEditingController(
+                            text: (_splits[userId] ?? 0.0).toStringAsFixed(2),
+                          ),
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: (value) => _updateAmountSplit(userId, value),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+            ],
+          ),
         ),
       ),
     );
