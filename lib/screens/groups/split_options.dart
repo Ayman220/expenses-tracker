@@ -1,0 +1,149 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+class SplitOptions extends StatefulWidget {
+  final List<Map<String, String>> members;
+  final Map<String, double> initialSplits;
+  final String splitType;
+
+  const SplitOptions({
+    super.key,
+    required this.members,
+    required this.initialSplits,
+    required this.splitType,
+  });
+
+  @override
+  State<SplitOptions> createState() => _SplitOptionsState();
+}
+
+class _SplitOptionsState extends State<SplitOptions> {
+  late Map<String, double> _splits;
+  late String _splitType;
+
+  @override
+  void initState() {
+    super.initState();
+    _splits = Map.from(widget.initialSplits);
+    _splitType = widget.splitType;
+  }
+
+  void _updateEqualSplit() {
+    final share = 1.0 / widget.members.length;
+    setState(() {
+      _splits = {
+        for (final member in widget.members)
+          member['uid']!: share,
+      };
+      _splitType = 'equal';
+    });
+  }
+
+  void _updateAmountSplit(String userId, String value) {
+    final amount = double.tryParse(value) ?? 0.0;
+    setState(() {
+      _splits[userId] = amount;
+      _splitType = 'unequal';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Split Options'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        actions: [
+          TextButton(
+            onPressed: () {
+              Get.back(result: {
+                'splits': _splits,
+                'splitType': _splitType,
+              });
+            },
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _updateEqualSplit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _splitType == 'equal'
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    child: const Text('Evenly'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _splitType = 'unequal';
+                        // Initialize with equal amounts based on the total expense
+                        final totalAmount = Get.arguments['amount'] as double? ?? 0.0;
+                        final share = totalAmount / widget.members.length;
+                        _splits = {
+                          for (final member in widget.members)
+                            member['uid']!: share,
+                        };
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _splitType == 'unequal'
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    child: const Text('Unevenly'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            if (_splitType == 'unequal')
+              ...widget.members.map((member) {
+                final userId = member['uid']!;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        member['name']!,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: TextEditingController(
+                          text: (_splits[userId] ?? 0.0).toStringAsFixed(2),
+                        ),
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) => _updateAmountSplit(userId, value),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+          ],
+        ),
+      ),
+    );
+  }
+} 

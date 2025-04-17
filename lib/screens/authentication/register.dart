@@ -12,35 +12,35 @@ class Register extends StatelessWidget {
   Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
     final databaseService = DatabaseService();
-    final _formKey = GlobalKey<FormState>();
-    final _loading = false.obs;
-    final _obscurePassword = true.obs;
+    final formKey = GlobalKey<FormState>();
+    final loading = false.obs;
+    final obscurePassword = true.obs;
 
-    final TextEditingController _nameController = TextEditingController();
-    final TextEditingController _emailController = TextEditingController();
-    final TextEditingController _passwordController = TextEditingController();
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController emailController = TextEditingController();
+    final TextEditingController passwordController = TextEditingController();
 
-    Future<void> _register() async {
-      if (_formKey.currentState!.validate()) {
-        _loading.value = true;
+    Future<void> register() async {
+      if (formKey.currentState!.validate()) {
+        loading.value = true;
         try {
           final UserCredential? result = await authController.registerWithEmailAndPassword(
-            _emailController.text.trim(),
-            _passwordController.text,
+            emailController.text.trim(),
+            passwordController.text,
           );
 
           if (result != null) {
             // Create user profile in Firestore
             await databaseService.createUser(
-              _nameController.text.trim(),
-              _emailController.text.trim(),
+              nameController.text.trim(),
+              emailController.text.trim(),
               result.user!.uid,
             );
           }
         } catch (e) {
           Get.snackbar('Error', 'Failed to register: $e');
         } finally {
-          _loading.value = false;
+          loading.value = false;
         }
       }
     }
@@ -49,7 +49,9 @@ class Register extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Register"),
         centerTitle: true,
-        elevation: 2,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           TextButton.icon(
             onPressed: () => toggleView(),
@@ -63,15 +65,15 @@ class Register extends StatelessWidget {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
           child: Form(
-            key: _formKey,
+            key: formKey,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             child: Column(
               children: [
                 const Icon(Icons.person_add, size: 80, color: Colors.blue),
                 const SizedBox(height: 20),
                 TextFormField(
-                  controller: _nameController,
-                  enabled: !_loading.value,
+                  controller: nameController,
+                  enabled: !loading.value,
                   decoration: const InputDecoration(
                     labelText: "Name",
                     border: OutlineInputBorder(),
@@ -86,8 +88,8 @@ class Register extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 TextFormField(
-                  controller: _emailController,
-                  enabled: !_loading.value,
+                  controller: emailController,
+                  enabled: !loading.value,
                   decoration: const InputDecoration(
                     labelText: "Email",
                     border: OutlineInputBorder(),
@@ -108,20 +110,20 @@ class Register extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 Obx(() => TextFormField(
-                      controller: _passwordController,
-                      enabled: !_loading.value,
-                      obscureText: _obscurePassword.value,
+                      controller: passwordController,
+                      enabled: !loading.value,
+                      obscureText: obscurePassword.value,
                       decoration: InputDecoration(
                         labelText: "Password",
                         border: const OutlineInputBorder(),
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscurePassword.value
+                            obscurePassword.value
                                 ? Icons.visibility_off
                                 : Icons.visibility,
                           ),
-                          onPressed: () => _obscurePassword.toggle(),
+                          onPressed: () => obscurePassword.toggle(),
                         ),
                       ),
                       validator: (val) {
@@ -135,11 +137,11 @@ class Register extends StatelessWidget {
                     )),
                 const SizedBox(height: 20),
                 Obx(() => ElevatedButton(
-                      onPressed: _loading.value ? null : _register,
+                      onPressed: loading.value ? null : register,
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 50),
                       ),
-                      child: _loading.value
+                      child: loading.value
                           ? const CircularProgressIndicator()
                           : const Text('Register'),
                     )),

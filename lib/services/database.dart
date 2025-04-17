@@ -11,7 +11,7 @@ class DatabaseService {
             'name': name,
             'email': email,
             'createdAt': FieldValue.serverTimestamp(),
-          });;
+          });
   }
 
   // Create a new group

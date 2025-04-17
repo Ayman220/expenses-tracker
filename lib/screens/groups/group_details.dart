@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class GroupDetails extends StatefulWidget {
   final String groupId;
@@ -28,13 +29,19 @@ class _GroupDetailsState extends State<GroupDetails> {
 
   Future<List<Map<String, String>>> _fetchMemberInfo() async {
     try {
-      final groupDoc =
-          await FirebaseFirestore.instance
-              .collection('groups')
-              .doc(widget.groupId)
-              .get();
+      final groupDoc = await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(widget.groupId)
+          .get();
+
+      if (!groupDoc.exists) {
+        throw Exception('Group not found');
+      }
 
       final memberIds = List<String>.from(groupDoc['members'] ?? []);
+      if (memberIds.isEmpty) {
+        return [];
+      }
 
       final userDocs = await Future.wait(
         memberIds.map(
@@ -46,15 +53,12 @@ class _GroupDetailsState extends State<GroupDetails> {
         final data = doc.data();
         return {
           'uid': doc.id,
-          'name':
-              (data?['name'] as String?) ??
-              'Unknown', // Explicitly cast to String? and handle null
+          'name': (data?['name'] as String?) ?? 'Unknown',
         };
       }).toList();
     } catch (e) {
-      return [
-        {'uid': 'error', 'name': 'Failed to load'},
-      ];
+      debugPrint('Error fetching member info: $e');
+      return [];
     }
   }
 
@@ -64,7 +68,9 @@ class _GroupDetailsState extends State<GroupDetails> {
       appBar: AppBar(
         title: const Text('Group Details'),
         centerTitle: true,
-        elevation: 2,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
       ),
       body: FutureBuilder<DocumentSnapshot>(
         future: _groupFuture,
@@ -73,8 +79,27 @@ class _GroupDetailsState extends State<GroupDetails> {
             return const Center(child: CircularProgressIndicator());
           }
 
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading group: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          }
+
           if (!snapshot.hasData || !snapshot.data!.exists) {
-            return const Center(child: Text('Group not found.'));
+            return const Center(
+              child: Text('Group not found.'),
+            );
           }
 
           final groupData = snapshot.data!.data() as Map<String, dynamic>;
@@ -100,30 +125,38 @@ class _GroupDetailsState extends State<GroupDetails> {
                       builder: (context, membersSnapshot) {
                         if (membersSnapshot.connectionState ==
                             ConnectionState.waiting) {
-                          return const CircularProgressIndicator(); // Show loading indicator
+                          return const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          );
                         }
-                        if (!membersSnapshot.hasData) {
-                          return const Text(
-                            "No members available",
-                          ); //Or return an empty container
+
+                        if (membersSnapshot.hasError) {
+                          return const Text("Error loading members");
+                        }
+
+                        if (!membersSnapshot.hasData || membersSnapshot.data!.isEmpty) {
+                          return const Text("No members available");
                         }
 
                         final members = membersSnapshot.data!;
 
-                        return ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pushNamed(
-                              context,
-                              '/add-expense',
-                              arguments: {
-                                'groupId': widget.groupId,
-                                'groupName': groupName,
-                                'members': members,
-                              },
-                            );
-                          },
-                          icon: const Icon(Icons.add),
-                          label: const Text("Add expenses"),
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Get.toNamed(
+                                '/add-expense',
+                                arguments: {
+                                  'groupId': widget.groupId,
+                                  'groupName': groupName,
+                                  'members': members,
+                                },
+                              );
+                            },
+                            child: const Text("Add expenses"),
+                          ),
                         );
                       },
                     ),
@@ -139,20 +172,32 @@ class _GroupDetailsState extends State<GroupDetails> {
                   future: _memberInfoFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const CircularProgressIndicator();
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
                     }
 
-                    if (!snapshot.hasData) {
-                      return const Text("Failed to load members");
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          "Error loading members: ${snapshot.error}",
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      );
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const Center(
+                        child: Text("No members in this group"),
+                      );
                     }
 
                     final members = snapshot.data!;
                     return Wrap(
                       spacing: 8.0,
-                      children:
-                          members
-                              .map((m) => Chip(label: Text(m['name'] ?? '')))
-                              .toList(),
+                      children: members
+                          .map((m) => Chip(label: Text(m['name'] ?? '')))
+                          .toList(),
                     );
                   },
                 ),

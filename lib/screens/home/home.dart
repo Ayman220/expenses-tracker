@@ -23,14 +23,14 @@ class Home extends StatelessWidget {
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        elevation: 2,
-        backgroundColor: Theme.of(context).colorScheme.primary,
         title: const Text(
           "Groups",
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 22),
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 24),
         ),
         centerTitle: true,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
           IconButton(
             onPressed: () => themeController.toggleTheme(),
@@ -47,8 +47,8 @@ class Home extends StatelessWidget {
               },
               icon: const CircleAvatar(
                 radius: 16,
-                backgroundColor: Colors.white,
-                child: Icon(Icons.person, size: 20, color: Colors.black),
+                backgroundColor: Color(0xFF2196F3),
+                child: Icon(Icons.person, size: 20, color: Colors.white),
               ),
               itemBuilder: (context) => [
                 const PopupMenuItem<String>(
@@ -74,32 +74,118 @@ class Home extends StatelessWidget {
           }
 
           if (snapshot.hasError) {
-            return const Center(child: Text('Error loading groups'));
+            return Center(
+              child: Text(
+                'Error loading groups',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            );
           }
 
           final docs = snapshot.data?.docs ?? [];
 
           if (docs.isEmpty) {
-            return const Center(
-              child: Text(
-                "No groups yet. Tap + to create one!",
-                style: TextStyle(fontSize: 16),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary.withAlpha(26),
+                      borderRadius: BorderRadius.circular(40),
+                    ),
+                    child: Icon(
+                      Icons.group_outlined,
+                      size: 40,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    "No groups yet",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    "Tap + to create one!",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Theme.of(context).colorScheme.onSurface.withAlpha(179),
+                    ),
+                  ),
+                ],
               ),
             );
           }
 
           return ListView.builder(
+            padding: const EdgeInsets.all(16),
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final group = docs[index].data() as Map<String, dynamic>;
               final groupId = docs[index].id;
 
-              return ListTile(
-                title: Text(group['name'] as String),
-                subtitle: Text('${group['members'].length} members'),
-                onTap: () {
-                  Get.toNamed('/group-details', arguments: {'groupId': groupId});
-                },
+              return Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    Get.toNamed('/group-details', arguments: {'groupId': groupId});
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary.withAlpha(26),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.group,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                group['name'] as String,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${group['members'].length} members',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Theme.of(context).colorScheme.onSurface.withAlpha(179),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          color: Theme.of(context).colorScheme.onSurface.withAlpha(128),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               );
             },
           );
@@ -107,7 +193,8 @@ class Home extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => Get.toNamed('/add-group'),
-        child: const Icon(Icons.add),
+        backgroundColor: const Color(0xFF2196F3),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

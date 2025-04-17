@@ -1,112 +1,106 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:expense_tracker/components/custom_dropdown.dart';
+import 'package:expense_tracker/controllers/expense_controller.dart';
+import 'package:expense_tracker/screens/groups/split_options.dart';
+import 'package:get/get.dart';
 
-class AddExpense extends StatefulWidget {
-  const AddExpense({super.key});
+class AddExpense extends StatelessWidget {
+  final String groupId;
+  final List<Map<String, String>> members;
 
-  @override
-  State<AddExpense> createState() => _AddExpenseState();
-}
-
-class _AddExpenseState extends State<AddExpense> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _amountController = TextEditingController();
-
-  late String groupId;
-  late String groupName;
-  late List<Map<String, dynamic>> members;
-  String? selectedPayerId;
-
-  bool isLoading = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final args = ModalRoute.of(context)?.settings.arguments as Map?;
-    if (args != null) {
-      groupId = args['groupId'];
-      groupName = args['groupName'];
-      // Ensure the members list is correctly cast
-      members = List<Map<String, dynamic>>.from(args['members'] ?? []);
-      selectedPayerId = FirebaseAuth.instance.currentUser?.uid;
-    }
-  }
-
-  Future<void> _addExpense() async {
-    if (!_formKey.currentState!.validate() || selectedPayerId == null) return;
-
-    setState(() => isLoading = true);
-
-    final amount = double.tryParse(_amountController.text.trim()) ?? 0;
-    final payerData =
-        members.firstWhere((m) => m['uid'] == selectedPayerId, orElse: () => {});
-
-    await FirebaseFirestore.instance
-        .collection('groups')
-        .doc(groupId)
-        .collection('expenses')
-        .add({
-      'title': _titleController.text.trim(),
-      'amount': amount,
-      'paidBy': selectedPayerId,
-      'paidByName': payerData['name'] ?? 'Unknown',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    if (!mounted) return;
-    Navigator.pop(context);
-  }
+  const AddExpense({
+    super.key,
+    required this.groupId,
+    required this.members,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final controller = Get.find<ExpenseController>();
+    
     return Scaffold(
-      appBar: AppBar(title: const Text("Add Expense")),
+      appBar: AppBar(
+        title: const Text('Add Expense'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Form(
-                key: _formKey,
-                child: ListView(
-                  children: [
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(labelText: "Title"),
-                      validator: (val) =>
-                          val == null || val.isEmpty ? "Required" : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _amountController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: "Amount"),
-                      validator: (val) =>
-                          val == null || val.isEmpty ? "Required" : null,
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: selectedPayerId,
-                      decoration: const InputDecoration(labelText: "Paid By"),
-                      items: members.map((member) {
-                        return DropdownMenuItem<String>(
-                          value: member['uid'],
-                          child: Text(member['name']),
-                        );
-                      }).toList(),
-                      onChanged: (val) => setState(() {
-                        selectedPayerId = val;
-                      }),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: _addExpense,
-                      child: const Text("Create Expense"),
-                    ),
-                  ],
-                ),
+        child: Form(
+          key: controller.formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              CustomDropdown(
+                items: members,
+                selectedItem: controller.selectedPayer,
+                onChanged: (value) => controller.selectedPayer = value,
+                hintText: 'Paid by',
+                errorText: controller.payerError,
               ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: controller.descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a description';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: controller.amountController,
+                decoration: const InputDecoration(
+                  labelText: 'Amount',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter an amount';
+                  }
+                  if (double.tryParse(value) == null) {
+                    return 'Please enter a valid number';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final amount = double.tryParse(controller.amountController.text) ?? 0.0;
+                  final result = await Get.to(
+                    () => SplitOptions(
+                      members: members,
+                      initialSplits: controller.splits,
+                      splitType: controller.splitType,
+                    ),
+                    arguments: {'amount': amount},
+                  );
+                  if (result != null) {
+                    controller.splits = result['splits'];
+                    controller.splitType = result['splitType'];
+                  }
+                },
+                icon: const Icon(Icons.people),
+                label: const Text('Split Options'),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => controller.addExpense(groupId),
+                child: const Text('Add Expense'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -9,18 +9,20 @@ class SignIn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
-    final _formKey = GlobalKey<FormState>();
-    final _obscurePassword = true.obs;
-    final _loading = false.obs;
+    final formKey = GlobalKey<FormState>();
+    final loading = false.obs;
+    final obscurePassword = true.obs;
 
-    final TextEditingController _emailController = TextEditingController();
-    final TextEditingController _passwordController = TextEditingController();
+    final TextEditingController emailController = TextEditingController();
+    final TextEditingController passwordController = TextEditingController();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Sign In"),
         centerTitle: true,
-        elevation: 2,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           TextButton.icon(
             onPressed: () => toggleView(),
@@ -34,15 +36,15 @@ class SignIn extends StatelessWidget {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
           child: Form(
-            key: _formKey,
+            key: formKey,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             child: Column(
               children: [
                 const Icon(Icons.lock, size: 80, color: Colors.blue),
                 const SizedBox(height: 20),
                 TextFormField(
-                  controller: _emailController,
-                  enabled: !_loading.value,
+                  controller: emailController,
+                  enabled: !loading.value,
                   decoration: const InputDecoration(
                     labelText: "Email",
                     border: OutlineInputBorder(),
@@ -63,20 +65,20 @@ class SignIn extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 Obx(() => TextFormField(
-                      controller: _passwordController,
-                      enabled: !_loading.value,
-                      obscureText: _obscurePassword.value,
+                      controller: passwordController,
+                      enabled: !loading.value,
+                      obscureText: obscurePassword.value,
                       decoration: InputDecoration(
                         labelText: "Password",
                         border: const OutlineInputBorder(),
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscurePassword.value
+                            obscurePassword.value
                                 ? Icons.visibility_off
                                 : Icons.visibility,
                           ),
-                          onPressed: () => _obscurePassword.toggle(),
+                          onPressed: () => obscurePassword.toggle(),
                         ),
                       ),
                       validator: (val) {
@@ -90,25 +92,25 @@ class SignIn extends StatelessWidget {
                     )),
                 const SizedBox(height: 20),
                 Obx(() => ElevatedButton(
-                      onPressed: _loading.value
+                      onPressed: loading.value
                           ? null
                           : () async {
-                              if (_formKey.currentState!.validate()) {
-                                _loading.value = true;
+                              if (formKey.currentState!.validate()) {
+                                loading.value = true;
                                 try {
                                   await authController.signInWithEmailAndPassword(
-                                    _emailController.text,
-                                    _passwordController.text,
+                                    emailController.text,
+                                    passwordController.text,
                                   );
                                 } finally {
-                                  _loading.value = false;
+                                  loading.value = false;
                                 }
                               }
                             },
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 50),
                       ),
-                      child: _loading.value
+                      child: loading.value
                           ? const CircularProgressIndicator()
                           : const Text('Sign In'),
                     )),
