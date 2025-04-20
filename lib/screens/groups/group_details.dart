@@ -1,11 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:expense_tracker/screens/groups/expense_list.dart';
 import 'package:expense_tracker/screens/groups/group_balances.dart';
-import 'package:expense_tracker/screens/groups/settle_debts.dart'; // Add this import
+import 'package:expense_tracker/screens/groups/settle_debts.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:expense_tracker/screens/groups/add_member.dart';
 import 'package:expense_tracker/controllers/expense_controller.dart';
+import 'dart:async';
 
 class GroupDetails extends StatefulWidget {
   final String groupId;
@@ -19,6 +20,9 @@ class GroupDetails extends StatefulWidget {
 class _GroupDetailsState extends State<GroupDetails> {
   late Future<DocumentSnapshot> _groupFuture;
   late Future<List<Map<String, String>>> _memberInfoFuture;
+  StreamController<List<Map<String, dynamic>>>? _activityStreamController;
+  StreamSubscription? _expenseSubscription;
+  StreamSubscription? _settlementSubscription;
 
   @override
   void initState() {
@@ -28,13 +32,143 @@ class _GroupDetailsState extends State<GroupDetails> {
             .collection('groups')
             .doc(widget.groupId)
             .get();
-
     _memberInfoFuture = _fetchMemberInfo();
+
+    // Initialize stream controller properly
+    _initActivityStream();
 
     // Register the ExpenseController if not already registered
     if (!Get.isRegistered<ExpenseController>()) {
       Get.put(ExpenseController());
     }
+  }
+
+  void _initActivityStream() {
+    // Create the stream controller
+    _activityStreamController = StreamController<List<Map<String, dynamic>>>();
+
+    // Listen to expenses collection
+    _expenseSubscription = FirebaseFirestore.instance
+        .collection('expenses')
+        .where('groupId', isEqualTo: widget.groupId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen((_) {
+          _updateCombinedActivityStream();
+        });
+
+    // Listen to settlements collection
+    _settlementSubscription = FirebaseFirestore.instance
+        .collection('settlements')
+        .where('groupId', isEqualTo: widget.groupId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen((_) {
+          _updateCombinedActivityStream();
+        });
+
+    // Initial update
+    _updateCombinedActivityStream();
+  }
+
+  // void _setupActivityStream() {
+  //   // Listen to expenses collection
+  //   _expenseSubscription = FirebaseFirestore.instance
+  //       .collection('expenses')
+  //       .where('groupId', isEqualTo: widget.groupId)
+  //       .orderBy('createdAt', descending: true)
+  //       .snapshots()
+  //       .listen((_) {
+  //         _updateCombinedActivityStream();
+  //       });
+
+  //   // Listen to settlements collection
+  //   _settlementSubscription = FirebaseFirestore.instance
+  //       .collection('settlements')
+  //       .where('groupId', isEqualTo: widget.groupId)
+  //       .orderBy('createdAt', descending: true)
+  //       .snapshots()
+  //       .listen((_) {
+  //         _updateCombinedActivityStream();
+  //       });
+
+  //   // Initial update
+  //   _updateCombinedActivityStream();
+  // }
+
+  Future<void> _updateCombinedActivityStream() async {
+    if (_activityStreamController == null ||
+        _activityStreamController!.isClosed) {
+      return;
+    }
+    try {
+      // Get expenses
+      final expenseSnapshot =
+          await FirebaseFirestore.instance
+              .collection('expenses')
+              .where('groupId', isEqualTo: widget.groupId)
+              .orderBy('createdAt', descending: true)
+              .limit(10)
+              .get();
+
+      final expenses =
+          expenseSnapshot.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'id': doc.id,
+              'type': 'expense',
+              'data': data,
+              'timestamp': data['createdAt'],
+            };
+          }).toList();
+
+      // Get settlements
+      final settlementSnapshot =
+          await FirebaseFirestore.instance
+              .collection('settlements')
+              .where('groupId', isEqualTo: widget.groupId)
+              .orderBy('createdAt', descending: true)
+              .limit(10)
+              .get();
+
+      final settlements =
+          settlementSnapshot.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'id': doc.id,
+              'type': 'settlement',
+              'data': data,
+              'timestamp': data['createdAt'],
+            };
+          }).toList();
+
+      // Combine and sort
+      final combined = [...expenses, ...settlements];
+      combined.sort((a, b) {
+        final aTime = a['timestamp'] as Timestamp;
+        final bTime = b['timestamp'] as Timestamp;
+        return bTime.compareTo(aTime);
+      });
+
+      // Add to stream (limit to 10)
+      if (!_activityStreamController!.isClosed) {
+        _activityStreamController!.add(combined.take(10).toList());
+      }
+    } catch (e) {
+      debugPrint('Error updating activity stream: $e');
+      if (_activityStreamController != null &&
+          !_activityStreamController!.isClosed) {
+        _activityStreamController!.addError(e);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _expenseSubscription?.cancel();
+    _settlementSubscription?.cancel();
+    _activityStreamController?.close();
+    super.dispose();
   }
 
   Future<List<Map<String, String>>> _fetchMemberInfo() async {
@@ -302,22 +436,34 @@ class _GroupDetailsState extends State<GroupDetails> {
                 ),
 
                 const SizedBox(height: 24),
-                StreamBuilder<QuerySnapshot>(
-                  stream:
-                      FirebaseFirestore.instance
-                          .collection('expenses')
-                          .where('groupId', isEqualTo: widget.groupId)
-                          .orderBy('createdAt', descending: true)
-                          .limit(3)
-                          .snapshots(),
+
+                // Combined Activity Stream Section
+                const Text(
+                  'Recent Activity',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+
+                StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: _activityStreamController?.stream,
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        !snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
                     }
 
-                    final expenses = snapshot.data?.docs ?? [];
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error loading activity: ${snapshot.error}',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      );
+                    }
 
-                    if (expenses.isEmpty) {
+                    final activities = snapshot.data ?? [];
+
+                    if (activities.isEmpty) {
                       return Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -326,197 +472,113 @@ class _GroupDetailsState extends State<GroupDetails> {
                         ),
                         child: const Center(
                           child: Text(
-                            'No expenses yet. Add an expense to get started!',
+                            'No activity yet. Add an expense or settle up to get started!',
                             textAlign: TextAlign.center,
                           ),
                         ),
                       );
                     }
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Recent Expenses',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Get.to(
-                                  () => ExpenseList(
-                                    groupId: widget.groupId,
-                                    groupName: groupName,
-                                  ),
-                                );
-                              },
-                              child: const Text('View all'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        ...expenses.map((doc) {
-                          final data = doc.data() as Map<String, dynamic>;
-                          final description =
-                              data['description'] as String? ??
-                              'Unnamed expense';
-                          final amount = data['amount'] as double? ?? 0.0;
-                          final paidById = data['paidBy'] as String? ?? '';
-
-                          return FutureBuilder<DocumentSnapshot>(
-                            future:
-                                FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(paidById)
-                                    .get(),
-                            builder: (context, userSnapshot) {
-                              String payerName = 'Unknown';
-                              if (userSnapshot.hasData &&
-                                  userSnapshot.data!.exists) {
-                                final userData =
-                                    userSnapshot.data!.data()
-                                        as Map<String, dynamic>?;
-                                payerName =
-                                    userData?['name'] as String? ?? 'Unknown';
-                              }
-
-                              return Card(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                child: ListTile(
-                                  title: Text(description),
-                                  subtitle: Text('Paid by $payerName'),
-                                  trailing: Text(
-                                    amount.toStringAsFixed(2),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
+                    // Get all user IDs from both expenses and settlements
+                    final userIds = <String>{};
+                    for (final activity in activities) {
+                      if (activity['type'] == 'expense') {
+                        userIds.add(activity['data']['paidBy'] as String);
+                      } else if (activity['type'] == 'settlement') {
+                        userIds.add(activity['data']['fromUserId'] as String);
+                        userIds.add(activity['data']['toUserId'] as String);
+                      }
+                    }
+                    return FutureBuilder<Map<String, String>>(
+                      future: _fetchUserNames(userIds.toList()),
+                      builder: (context, namesSnapshot) {
+                        if (namesSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
                           );
-                        }),
-                      ],
-                    );
-                  },
-                ),
+                        }
 
-                // Add recent settlements section
-                const SizedBox(height: 24),
-                StreamBuilder<QuerySnapshot>(
-                  stream:
-                      FirebaseFirestore.instance
-                          .collection('settlements')
-                          .where('groupId', isEqualTo: widget.groupId)
-                          .orderBy('createdAt', descending: true)
-                          .limit(3)
-                          .snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const SizedBox.shrink();
-                    }
+                        final names = namesSnapshot.data ?? {};
 
-                    final settlements = snapshot.data?.docs ?? [];
+                        return Column(
+                          children:
+                              activities.map((activity) {
+                                final type = activity['type'] as String;
+                                final data =
+                                    activity['data'] as Map<String, dynamic>;
+                                final timestamp =
+                                    activity['timestamp'] as Timestamp;
+                                final date = timestamp.toDate();
+                                final formattedDate =
+                                    '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
 
-                    if (settlements.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
+                                if (type == 'expense') {
+                                  final description =
+                                      data['description'] as String? ??
+                                      'Unnamed expense';
+                                  final amount =
+                                      (data['amount'] as num).toDouble();
+                                  final paidById = data['paidBy'] as String;
+                                  final payerName =
+                                      names[paidById] ?? 'Unknown';
 
-                    // Get all user IDs
-                    final userIds =
-                        settlements
-                            .expand<String>((doc) {
-                              final data = doc.data() as Map<String, dynamic>;
-                              return [
-                                data['fromUserId'] as String,
-                                data['toUserId'] as String,
-                              ];
-                            })
-                            .toSet()
-                            .toList();
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Recent Settlements',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Get.to(
-                                  () => SettleDebts(
-                                    groupId: widget.groupId,
-                                    groupName: groupName,
-                                  ),
-                                );
-                              },
-                              child: const Text('View all'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        FutureBuilder<Map<String, String>>(
-                          future: _fetchUserNames(userIds),
-                          builder: (context, namesSnapshot) {
-                            if (namesSnapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            }
-
-                            final names = namesSnapshot.data ?? {};
-
-                            return Column(
-                              children:
-                                  settlements.map((doc) {
-                                    final data =
-                                        doc.data() as Map<String, dynamic>;
-                                    final fromId = data['fromUserId'] as String;
-                                    final toId = data['toUserId'] as String;
-                                    final amount =
-                                        (data['amount'] as num).toDouble();
-
-                                    final fromName = names[fromId] ?? 'Unknown';
-                                    final toName = names[toId] ?? 'Unknown';
-
-                                    return Card(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      child: ListTile(
-                                        leading: const CircleAvatar(
-                                          backgroundColor: Colors.green,
-                                          child: Icon(
-                                            Icons.check,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        title: Text('$fromName paid $toName'),
-                                        trailing: Text(
-                                          amount.toStringAsFixed(2),
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.green,
-                                          ),
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    child: ListTile(
+                                      leading: const CircleAvatar(
+                                        backgroundColor: Colors.blue,
+                                        child: Icon(
+                                          Icons.receipt,
+                                          color: Colors.white,
                                         ),
                                       ),
-                                    );
-                                  }).toList(),
-                            );
-                          },
-                        ),
-                      ],
+                                      title: Text(description),
+                                      subtitle: Text(
+                                        'Paid by $payerName • $formattedDate',
+                                      ),
+                                      trailing: Text(
+                                        amount.toStringAsFixed(2),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  // Settlement
+                                  final fromId = data['fromUserId'] as String;
+                                  final toId = data['toUserId'] as String;
+                                  final amount =
+                                      (data['amount'] as num).toDouble();
+                                  final fromName = names[fromId] ?? 'Unknown';
+                                  final toName = names[toId] ?? 'Unknown';
+
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    child: ListTile(
+                                      leading: const CircleAvatar(
+                                        backgroundColor: Colors.green,
+                                        child: Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      title: Text('$fromName paid $toName'),
+                                      subtitle: Text(formattedDate),
+                                      trailing: Text(
+                                        amount.toStringAsFixed(2),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }).toList(),
+                        );
+                      },
                     );
                   },
                 ),

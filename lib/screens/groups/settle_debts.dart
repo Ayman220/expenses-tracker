@@ -44,8 +44,12 @@ class SettleDebts extends StatelessWidget {
     BuildContext context,
     SettlementController settlementController,
   ) {
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('groups').doc(groupId).get(),
+    return StreamBuilder<DocumentSnapshot>(
+      stream:
+          FirebaseFirestore.instance
+              .collection('groups')
+              .doc(groupId)
+              .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -61,7 +65,8 @@ class SettleDebts extends StatelessWidget {
 
         final groupData = snapshot.data!.data() as Map<String, dynamic>;
         final debts = List<Map<String, dynamic>>.from(
-            groupData['simplifiedDebts'] ?? []);
+          groupData['simplifiedDebts'] ?? [],
+        );
 
         if (debts.isEmpty) {
           return const Center(
@@ -70,10 +75,7 @@ class SettleDebts extends StatelessWidget {
               children: [
                 Icon(Icons.check_circle_outline, size: 64, color: Colors.green),
                 SizedBox(height: 16),
-                Text(
-                  'All settled up!',
-                  style: TextStyle(fontSize: 18),
-                ),
+                Text('All settled up!', style: TextStyle(fontSize: 18)),
                 SizedBox(height: 8),
                 Text(
                   'There are no outstanding debts in this group.',
@@ -85,11 +87,12 @@ class SettleDebts extends StatelessWidget {
         }
 
         // Collect unique user IDs
-        final allUids = debts
-            .expand((d) => [d['from'] as String, d['to'] as String])
-            .toSet()
-            .cast<String>()
-            .toList();
+        final allUids =
+            debts
+                .expand((d) => [d['from'] as String, d['to'] as String])
+                .toSet()
+                .cast<String>()
+                .toList();
 
         return FutureBuilder<Map<String, String>>(
           future: _fetchUserNames(allUids),
@@ -141,15 +144,16 @@ class SettleDebts extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: () => _showSettleConfirmation(
-                            context,
-                            settlementController,
-                            fromId,
-                            toId,
-                            fromName,
-                            toName,
-                            amount,
-                          ),
+                          onPressed:
+                              () => _showSettleConfirmation(
+                                context,
+                                settlementController,
+                                fromId,
+                                toId,
+                                fromName,
+                                toName,
+                                amount,
+                              ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
@@ -189,24 +193,23 @@ class SettleDebts extends StatelessWidget {
 
         final settlements = snapshot.data?.docs ?? [];
         if (settlements.isEmpty) {
-          return const Center(
-            child: Text('No settlement history yet'),
-          );
+          return const Center(child: Text('No settlement history yet'));
         }
 
         // Collect unique user IDs
-        final allUids = settlements
-            .expand((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return [
-                data['fromUserId'] as String,
-                data['toUserId'] as String,
-                data['createdBy'] as String
-              ];
-            })
-            .toSet()
-            .cast<String>()
-            .toList();
+        final allUids =
+            settlements
+                .expand((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return [
+                    data['fromUserId'] as String,
+                    data['toUserId'] as String,
+                    data['createdBy'] as String,
+                  ];
+                })
+                .toSet()
+                .cast<String>()
+                .toList();
 
         return FutureBuilder<Map<String, String>>(
           future: _fetchUserNames(allUids),
@@ -222,28 +225,29 @@ class SettleDebts extends StatelessWidget {
               itemBuilder: (context, index) {
                 final settlementDoc = settlements[index];
                 final data = settlementDoc.data() as Map<String, dynamic>;
-                
+
                 final fromId = data['fromUserId'] as String;
                 final toId = data['toUserId'] as String;
                 final createdById = data['createdBy'] as String;
                 final amount = (data['amount'] as num).toDouble();
-                
+
                 final fromName = names[fromId] ?? 'Unknown';
                 final toName = names[toId] ?? 'Unknown';
                 final createdByName = names[createdById] ?? 'Unknown';
-                
+
                 // Format date
                 final timestamp = data['createdAt'] as Timestamp?;
-                final date = timestamp != null
-                    ? DateFormat('MMM d, yyyy - h:mm a').format(timestamp.toDate())
-                    : 'Unknown date';
+                final date =
+                    timestamp != null
+                        ? DateFormat(
+                          'MMM d, yyyy - h:mm a',
+                        ).format(timestamp.toDate())
+                        : 'Unknown date';
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
-                    leading: const CircleAvatar(
-                      child: Icon(Icons.paid),
-                    ),
+                    leading: const CircleAvatar(child: Icon(Icons.paid)),
                     title: Text('$fromName paid $toName'),
                     subtitle: Text('$date • Marked by $createdByName'),
                     trailing: Text(
@@ -311,27 +315,28 @@ class SettleDebts extends StatelessWidget {
   /// Batch fetch user display names for given UIDs
   Future<Map<String, String>> _fetchUserNames(List<String> uids) async {
     if (uids.isEmpty) return {};
-    
+
     // Split into batches of 10 to avoid Firestore limitations
     final batches = <List<String>>[];
     for (var i = 0; i < uids.length; i += 10) {
       final end = (i + 10 < uids.length) ? i + 10 : uids.length;
       batches.add(uids.sublist(i, end));
     }
-    
+
     final results = <String, String>{};
-    
+
     for (final batch in batches) {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where(FieldPath.documentId, whereIn: batch)
-          .get();
-          
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .where(FieldPath.documentId, whereIn: batch)
+              .get();
+
       for (var doc in snapshot.docs) {
         results[doc.id] = doc['name'] as String? ?? 'Unknown';
       }
     }
-    
+
     return results;
   }
 }
