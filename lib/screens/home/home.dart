@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:expense_tracker/controllers/auth_controller.dart';
 import 'package:expense_tracker/controllers/theme_controller.dart';
+import 'package:expense_tracker/screens/authentication/reset_password.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -43,6 +44,8 @@ class Home extends StatelessWidget {
               onSelected: (value) async {
                 if (value == 'logout') {
                   await authController.signOut();
+                } else if (value == 'reset_password') {
+                  Get.dialog(const ResetPasswordDialog());
                 }
               },
               icon: const CircleAvatar(
@@ -50,18 +53,23 @@ class Home extends StatelessWidget {
                 backgroundColor: Color(0xFF2196F3),
                 child: Icon(Icons.person, size: 20, color: Colors.white),
               ),
-              itemBuilder: (context) => [
-                const PopupMenuItem<String>(
-                  value: 'logout',
-                  child: Row(
-                    children: [
-                      Icon(Icons.logout, size: 18),
-                      SizedBox(width: 10),
-                      Text('Logout'),
-                    ],
-                  ),
-                ),
-              ],
+              itemBuilder:
+                  (context) => [
+                    const PopupMenuItem<String>(
+                      value: 'logout',
+                      child: Row(
+                        children: [
+                          Icon(Icons.logout, size: 18),
+                          SizedBox(width: 10),
+                          Text('Logout'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'reset_password',
+                      child: Text('Reset Password'),
+                    ),
+                  ],
             ),
           ),
         ],
@@ -93,7 +101,9 @@ class Home extends StatelessWidget {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withAlpha(26),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withAlpha(26),
                       borderRadius: BorderRadius.circular(40),
                     ),
                     child: Icon(
@@ -116,7 +126,9 @@ class Home extends StatelessWidget {
                     "Tap + to create one!",
                     style: TextStyle(
                       fontSize: 16,
-                      color: Theme.of(context).colorScheme.onSurface.withAlpha(179),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withAlpha(179),
                     ),
                   ),
                 ],
@@ -136,7 +148,10 @@ class Home extends StatelessWidget {
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () {
-                    Get.toNamed('/group-details', arguments: {'groupId': groupId});
+                    Get.toNamed(
+                      '/group-details',
+                      arguments: {'groupId': groupId},
+                    );
                   },
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -146,7 +161,9 @@ class Home extends StatelessWidget {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withAlpha(26),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withAlpha(26),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
@@ -172,7 +189,9 @@ class Home extends StatelessWidget {
                                 '${group['members'].length} members',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Theme.of(context).colorScheme.onSurface.withAlpha(179),
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withAlpha(179),
                                 ),
                               ),
                             ],
@@ -180,7 +199,9 @@ class Home extends StatelessWidget {
                         ),
                         Icon(
                           Icons.chevron_right,
-                          color: Theme.of(context).colorScheme.onSurface.withAlpha(128),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withAlpha(128),
                         ),
                       ],
                     ),
