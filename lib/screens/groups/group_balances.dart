@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:expense_tracker/components/custom_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:expense_tracker/controllers/settlement_controller.dart';
@@ -51,7 +52,7 @@ class GroupBalances extends StatelessWidget {
         future: fetchSimplifiedDebts(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: Loader());
           }
 
           final debts = snapshot.data ?? [];
@@ -89,7 +90,7 @@ class GroupBalances extends StatelessWidget {
             future: fetchUserNames(allUids),
             builder: (context, nameSnap) {
               if (nameSnap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                return const Center(child: Loader());
               }
 
               final names = nameSnap.data ?? {};

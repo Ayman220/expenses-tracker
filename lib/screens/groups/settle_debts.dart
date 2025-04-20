@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:expense_tracker/components/custom_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:expense_tracker/controllers/settlement_controller.dart';
@@ -52,7 +53,7 @@ class SettleDebts extends StatelessWidget {
               .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: Loader());
         }
 
         if (snapshot.hasError) {
@@ -98,7 +99,7 @@ class SettleDebts extends StatelessWidget {
           future: _fetchUserNames(allUids),
           builder: (context, nameSnap) {
             if (nameSnap.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: Loader());
             }
 
             final names = nameSnap.data ?? {};
@@ -184,7 +185,7 @@ class SettleDebts extends StatelessWidget {
       stream: settlementController.getSettlementHistory(groupId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: Loader());
         }
 
         if (snapshot.hasError) {
@@ -215,7 +216,7 @@ class SettleDebts extends StatelessWidget {
           future: _fetchUserNames(allUids),
           builder: (context, nameSnap) {
             if (nameSnap.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: Loader());
             }
 
             final names = nameSnap.data ?? {};

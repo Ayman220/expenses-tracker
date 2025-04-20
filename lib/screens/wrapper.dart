@@ -1,3 +1,4 @@
+import 'package:expense_tracker/components/custom_loader.dart';
 import 'package:expense_tracker/controllers/auth_controller.dart';
 import 'package:expense_tracker/screens/authentication/authenticate.dart';
 import 'package:expense_tracker/screens/authentication/verify_email.dart';
@@ -14,7 +15,7 @@ class Wrapper extends StatelessWidget {
 
     return Obx(() {
       if (authController.isLoading.value) {
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        return const Scaffold(body: Center(child: Loader()));
       }
 
       final customUser = authController.user.value;

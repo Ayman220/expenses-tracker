@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:expense_tracker/components/custom_loader.dart';
+import 'package:expense_tracker/helpers/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -19,29 +21,25 @@ class AddMember extends StatefulWidget {
 class _AddMemberState extends State<AddMember> {
   final TextEditingController _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
+  RxBool isLoading = false.obs;
   String? _errorMessage;
 
   Future<void> _addMember() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    isLoading.value = true;
 
     try {
       // Find user by email
-      final usersSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: _emailController.text.trim())
-          .get();
+      final usersSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .where('email', isEqualTo: _emailController.text.trim())
+              .get();
 
       if (usersSnapshot.docs.isEmpty) {
-        setState(() {
-          _errorMessage = 'No user found with this email';
-          _isLoading = false;
-        });
+        showErrorMessage("", 'No user found with this email');
+        isLoading.value = false;
         return;
       }
 
@@ -50,25 +48,25 @@ class _AddMemberState extends State<AddMember> {
 
       // Check if user is already in the group
       if (widget.existingMembers.contains(userId)) {
-        setState(() {
-          _errorMessage = 'User is already a member of this group';
-          _isLoading = false;
-        });
+        showErrorMessage('', 'User is already a member of this group');
+        isLoading.value = false;
         return;
       }
 
       // Add user to group
-      await FirebaseFirestore.instance.collection('groups').doc(widget.groupId).update({
-        'members': FieldValue.arrayUnion([userId]),
-      });
+      await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(widget.groupId)
+          .update({
+            'members': FieldValue.arrayUnion([userId]),
+          });
 
       if (!mounted) return;
       Get.back(result: true); // Return true to indicate success
+      showSuccessMessage("Success", "User added successfully");
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Error adding member: $e';
-        _isLoading = false;
-      });
+      showErrorMessage('', 'Error adding member: $e');
+      isLoading.value = false;
     }
   }
 
@@ -89,59 +87,56 @@ class _AddMemberState extends State<AddMember> {
           elevation: 0,
           scrolledUnderElevation: 0,
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextFormField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter an email';
-                    }
-                    if (!GetUtils.isEmail(value)) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                if (_errorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
+        body: Obx(() {
+          if (isLoading.value) {
+            return const Loader(); // Show loading screen when loading is true
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email),
                     ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter an email';
+                      }
+                      if (!GetUtils.isEmail(value)) {
+                        return 'Please enter a valid email';
+                      }
+                      return null;
+                    },
                   ),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _addMember,
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Add Member'),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ElevatedButton(
+                    onPressed: _addMember,
+                    child: const Text('Add Member'),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        }),
       ),
     );
   }
-} 
+}

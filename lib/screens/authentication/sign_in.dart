@@ -1,3 +1,4 @@
+import 'package:expense_tracker/components/custom_loader.dart';
 import 'package:expense_tracker/controllers/auth_controller.dart';
 import 'package:expense_tracker/screens/authentication/reset_password.dart';
 import 'package:flutter/material.dart';
@@ -44,70 +45,74 @@ class _SignInState extends State<SignIn> {
           ),
         ],
       ),
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
-          child: Form(
-            key: formKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: Column(
-              children: [
-                const Icon(Icons.lock, size: 80, color: Colors.blue),
-                const SizedBox(height: 20),
-                TextFormField(
-                  controller: emailController,
-                  enabled: !loading.value,
-                  decoration: const InputDecoration(
-                    labelText: "Email",
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (val) {
-                    const pattern = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
-                    final regex = RegExp(pattern);
+      body: Obx(() {
+        if (loading.value) {
+          return const Loader(); // Show loading screen when loading is true
+        }
 
-                    if (val == null || val.isEmpty) {
-                      return 'Enter your email';
-                    } else if (!regex.hasMatch(val)) {
-                      return 'Enter a valid email address';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-                Obx(
-                  () => TextFormField(
-                    controller: passwordController,
-                    enabled: !loading.value,
-                    obscureText: obscurePassword.value,
-                    decoration: InputDecoration(
-                      labelText: "Password",
-                      border: const OutlineInputBorder(),
-                      prefixIcon: const Icon(Icons.lock),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          obscurePassword.value
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed: () => obscurePassword.toggle(),
-                      ),
+        return GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
+            child: Form(
+              key: formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: Column(
+                children: [
+                  const Icon(Icons.lock, size: 80, color: Colors.blue),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: emailController,
+                    enabled: !loading.value, // Disable input when loading
+                    decoration: const InputDecoration(
+                      labelText: "Email",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email),
                     ),
+                    keyboardType: TextInputType.emailAddress,
                     validator: (val) {
+                      const pattern = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
+                      final regex = RegExp(pattern);
+
                       if (val == null || val.isEmpty) {
-                        return 'Enter your password';
-                      } else if (val.length < 6) {
-                        return 'Password must be at least 6 characters';
+                        return 'Enter your email';
+                      } else if (!regex.hasMatch(val)) {
+                        return 'Enter a valid email address';
                       }
                       return null;
                     },
                   ),
-                ),
-                const SizedBox(height: 20),
-                Obx(
-                  () => ElevatedButton(
+                  const SizedBox(height: 20),
+                  Obx(
+                    () => TextFormField(
+                      controller: passwordController,
+                      enabled: !loading.value, // Disable input when loading
+                      obscureText: obscurePassword.value,
+                      decoration: InputDecoration(
+                        labelText: "Password",
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscurePassword.value
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => obscurePassword.toggle(),
+                        ),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Enter your password';
+                        } else if (val.length < 6) {
+                          return 'Password must be at least 6 characters';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
                     onPressed:
                         loading.value
                             ? null
@@ -122,30 +127,28 @@ class _SignInState extends State<SignIn> {
                                         passwordController.text,
                                       );
                                 } finally {
-                                  loading.value = false;
+                                  loading.value =
+                                      false; // Turn off loading once done
                                 }
                               }
                             },
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 50),
                     ),
-                    child:
-                        loading.value
-                            ? const CircularProgressIndicator()
-                            : const Text('Sign In'),
+                    child: const Text('Sign In'),
                   ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Get.dialog(const ResetPasswordDialog());
-                  },
-                  child: const Text('Forgot Password?'),
-                ),
-              ],
+                  TextButton(
+                    onPressed: () {
+                      Get.dialog(const ResetPasswordDialog());
+                    },
+                    child: const Text('Forgot Password?'),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }

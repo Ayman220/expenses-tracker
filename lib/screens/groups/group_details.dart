@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:expense_tracker/components/custom_loader.dart';
 import 'package:expense_tracker/screens/groups/expense_list.dart';
 import 'package:expense_tracker/screens/groups/group_balances.dart';
 import 'package:expense_tracker/screens/groups/settle_debts.dart';
@@ -218,7 +219,7 @@ class _GroupDetailsState extends State<GroupDetails> {
         future: _groupFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: Loader());
           }
 
           if (snapshot.hasError) {
@@ -268,7 +269,7 @@ class _GroupDetailsState extends State<GroupDetails> {
                           return const SizedBox(
                             width: 24,
                             height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: Loader(),
                           );
                         }
 
@@ -318,7 +319,7 @@ class _GroupDetailsState extends State<GroupDetails> {
                           if (snapshot.connectionState ==
                               ConnectionState.waiting) {
                             return const Center(
-                              child: CircularProgressIndicator(),
+                              child: Loader(),
                             );
                           }
 
@@ -449,7 +450,7 @@ class _GroupDetailsState extends State<GroupDetails> {
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting &&
                         !snapshot.hasData) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(child: Loader());
                     }
 
                     if (snapshot.hasError) {
@@ -495,7 +496,7 @@ class _GroupDetailsState extends State<GroupDetails> {
                         if (namesSnapshot.connectionState ==
                             ConnectionState.waiting) {
                           return const Center(
-                            child: CircularProgressIndicator(),
+                            child: Loader(),
                           );
                         }
 

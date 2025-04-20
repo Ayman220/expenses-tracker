@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:expense_tracker/components/custom_loader.dart';
 import 'package:expense_tracker/controllers/auth_controller.dart';
 import 'package:expense_tracker/controllers/theme_controller.dart';
 import 'package:expense_tracker/screens/authentication/reset_password.dart';
@@ -78,7 +79,7 @@ class Home extends StatelessWidget {
         stream: _groupStream(userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: Loader());
           }
 
           if (snapshot.hasError) {

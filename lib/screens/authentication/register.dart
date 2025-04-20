@@ -1,3 +1,4 @@
+import 'package:expense_tracker/components/custom_loader.dart';
 import 'package:expense_tracker/controllers/auth_controller.dart';
 import 'package:expense_tracker/helpers/snackbar.dart';
 import 'package:expense_tracker/services/database.dart';
@@ -30,18 +31,14 @@ class _RegisterState extends State<Register> {
 
       loading.value = true;
       try {
-        await authController
-            .registerWithEmailAndPassword(
-              nameController.text.trim(),
-              emailController.text.trim(),
-              passwordController.text,
-            );
+        await authController.registerWithEmailAndPassword(
+          nameController.text.trim(),
+          emailController.text.trim(),
+          passwordController.text,
+        );
       } catch (e) {
         if (mounted) {
-          showErrorMessage(
-            'Error',
-            'Failed to register: ${e.toString()}',
-          );
+          showErrorMessage('Error', 'Failed to register: ${e.toString()}');
         }
       } finally {
         if (mounted) {
@@ -76,101 +73,104 @@ class _RegisterState extends State<Register> {
           ),
         ],
       ),
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
-          child: Form(
-            key: formKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: Column(
-              children: [
-                const Icon(Icons.person_add, size: 80, color: Colors.blue),
-                const SizedBox(height: 20),
-                TextFormField(
-                  controller: nameController,
-                  enabled: !loading.value,
-                  decoration: const InputDecoration(
-                    labelText: "Name",
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
-                  ),
-                  validator: (val) {
-                    if (val == null || val.isEmpty) {
-                      return 'Enter your name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-                TextFormField(
-                  controller: emailController,
-                  enabled: !loading.value,
-                  decoration: const InputDecoration(
-                    labelText: "Email",
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (val) {
-                    const pattern = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
-                    final regex = RegExp(pattern);
+      body: Obx(() {
+        if (loading.value) {
+          return const Loader(); // Show loading screen when loading is true
+        }
 
-                    if (val == null || val.isEmpty) {
-                      return 'Enter your email';
-                    } else if (!regex.hasMatch(val)) {
-                      return 'Enter a valid email address';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-                Obx(
-                  () => TextFormField(
-                    controller: passwordController,
+        return GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
+            child: Form(
+              key: formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: Column(
+                children: [
+                  const Icon(Icons.person_add, size: 80, color: Colors.blue),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: nameController,
                     enabled: !loading.value,
-                    obscureText: obscurePassword.value,
-                    decoration: InputDecoration(
-                      labelText: "Password",
-                      border: const OutlineInputBorder(),
-                      prefixIcon: const Icon(Icons.lock),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          obscurePassword.value
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed: () => obscurePassword.toggle(),
-                      ),
+                    decoration: const InputDecoration(
+                      labelText: "Name",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person),
                     ),
                     validator: (val) {
                       if (val == null || val.isEmpty) {
-                        return 'Enter your password';
-                      } else if (val.length < 6) {
-                        return 'Password must be at least 6 characters';
+                        return 'Enter your name';
                       }
                       return null;
                     },
                   ),
-                ),
-                const SizedBox(height: 20),
-                Obx(
-                  () => ElevatedButton(
-                    onPressed: loading.value ? null : register,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 50),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: emailController,
+                    enabled: !loading.value,
+                    decoration: const InputDecoration(
+                      labelText: "Email",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email),
                     ),
-                    child:
-                        loading.value
-                            ? const CircularProgressIndicator()
-                            : const Text('Register'),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (val) {
+                      const pattern = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
+                      final regex = RegExp(pattern);
+
+                      if (val == null || val.isEmpty) {
+                        return 'Enter your email';
+                      } else if (!regex.hasMatch(val)) {
+                        return 'Enter a valid email address';
+                      }
+                      return null;
+                    },
                   ),
-                ),
-              ],
+                  const SizedBox(height: 20),
+                  Obx(
+                    () => TextFormField(
+                      controller: passwordController,
+                      enabled: !loading.value,
+                      obscureText: obscurePassword.value,
+                      decoration: InputDecoration(
+                        labelText: "Password",
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscurePassword.value
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => obscurePassword.toggle(),
+                        ),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Enter your password';
+                        } else if (val.length < 6) {
+                          return 'Password must be at least 6 characters';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Obx(
+                    () => ElevatedButton(
+                      onPressed: loading.value ? null : register,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
+                      child: const Text('Register'),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }
