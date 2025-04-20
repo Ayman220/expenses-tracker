@@ -1,3 +1,4 @@
+import 'package:expense_tracker/helpers/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -20,22 +21,41 @@ class SplitOptions extends StatefulWidget {
 class _SplitOptionsState extends State<SplitOptions> {
   late Map<String, double> _splits;
   late String _splitType;
+  final Map<String, TextEditingController> _controllers = {};
+  late double _totalAmount;
 
   @override
   void initState() {
     super.initState();
     _splits = Map.from(widget.initialSplits);
     _splitType = widget.splitType;
+    _totalAmount = Get.arguments['amount'] as double? ?? 0.0;
+    for (var member in widget.members) {
+      final uid = member['uid']!;
+      _controllers[uid] = TextEditingController(
+        text: (_splits[uid] ?? 0.0).toStringAsFixed(2),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    for (var controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
   }
 
   void _updateEqualSplit() {
     final share = 1.0 / widget.members.length;
     setState(() {
       _splits = {
-        for (final member in widget.members)
-          member['uid']!: share,
+        for (final member in widget.members) member['uid']!: share,
       };
       _splitType = 'equal';
+      for (var uid in _controllers.keys) {
+        _controllers[uid]!.text = share.toStringAsFixed(2);
+      }
     });
   }
 
@@ -44,6 +64,23 @@ class _SplitOptionsState extends State<SplitOptions> {
     setState(() {
       _splits[userId] = amount;
       _splitType = 'unequal';
+    });
+  }
+
+  void _handleDone() {
+    if (_splitType == 'unequal') {
+      final totalEntered = _splits.values.fold(0.0, (sum, val) => sum + val);
+      if ((totalEntered - _totalAmount).abs() > 0.01) {
+        showErrorMessage(
+          'Invalid Split',
+          'The total must equal ${_totalAmount.toStringAsFixed(2)}',
+        );
+        return;
+      }
+    }
+    Get.back(result: {
+      'splits': _splits,
+      'splitType': _splitType,
     });
   }
 
@@ -59,12 +96,7 @@ class _SplitOptionsState extends State<SplitOptions> {
           scrolledUnderElevation: 0,
           actions: [
             TextButton(
-              onPressed: () {
-                Get.back(result: {
-                  'splits': _splits,
-                  'splitType': _splitType,
-                });
-              },
+              onPressed: _handleDone,
               child: const Text('Done'),
             ),
           ],
@@ -84,7 +116,7 @@ class _SplitOptionsState extends State<SplitOptions> {
                             ? Theme.of(context).colorScheme.primary
                             : null,
                       ),
-                      child: const Text('Evenly'),
+                      child: const Text('Equally'),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -93,13 +125,13 @@ class _SplitOptionsState extends State<SplitOptions> {
                       onPressed: () {
                         setState(() {
                           _splitType = 'unequal';
-                          // Initialize with equal amounts based on the total expense
-                          final totalAmount = Get.arguments['amount'] as double? ?? 0.0;
-                          final share = totalAmount / widget.members.length;
+                          final share = _totalAmount / widget.members.length;
                           _splits = {
-                            for (final member in widget.members)
-                              member['uid']!: share,
+                            for (final member in widget.members) member['uid']!: share,
                           };
+                          for (var uid in _controllers.keys) {
+                            _controllers[uid]!.text = share.toStringAsFixed(2);
+                          }
                         });
                       },
                       style: ElevatedButton.styleFrom(
@@ -107,7 +139,7 @@ class _SplitOptionsState extends State<SplitOptions> {
                             ? Theme.of(context).colorScheme.primary
                             : null,
                       ),
-                      child: const Text('Unevenly'),
+                      child: const Text('Unequally'),
                     ),
                   ),
                 ],
@@ -130,9 +162,7 @@ class _SplitOptionsState extends State<SplitOptions> {
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
-                          controller: TextEditingController(
-                            text: (_splits[userId] ?? 0.0).toStringAsFixed(2),
-                          ),
+                          controller: _controllers[userId],
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
                             border: OutlineInputBorder(),

@@ -1,51 +1,55 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Expense {
   final String id;
-  final String groupId;
   final String description;
   final double amount;
   final String paidBy;
-  final String paidByName;
+  final String createdBy;
   final DateTime createdAt;
-  final Map<String, double> splits; // Maps user ID to their share amount
-  final String splitType; // 'equal', 'unequal', 'percentage'
+  final String splitType;
+  final Map<String, double> splits;
+  final String groupId;
 
   Expense({
     required this.id,
-    required this.groupId,
     required this.description,
     required this.amount,
     required this.paidBy,
-    required this.paidByName,
+    required this.createdBy,
     required this.createdAt,
+    required this.splitType,
     required this.splits,
-    this.splitType = 'equal',
+    required this.groupId,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'groupId': groupId,
       'description': description,
       'amount': amount,
       'paidBy': paidBy,
-      'paidByName': paidByName,
-      'createdAt': createdAt.toIso8601String(),
-      'splits': splits,
+      'createdBy': createdBy,
+      'createdAt': Timestamp.fromDate(createdAt),
       'splitType': splitType,
+      'splits': splits,
+      'groupId': groupId,
     };
   }
 
   factory Expense.fromMap(Map<String, dynamic> map) {
     return Expense(
-      id: map['id'],
-      groupId: map['groupId'],
-      description: map['description'],
-      amount: map['amount'].toDouble(),
-      paidBy: map['paidBy'],
-      paidByName: map['paidByName'],
-      createdAt: DateTime.parse(map['createdAt']),
-      splits: Map<String, double>.from(map['splits'] ?? {}),
+      id: map['id'] ?? '',
+      description: map['description'] ?? '',
+      amount: (map['amount'] as num).toDouble(),
+      paidBy: map['paidBy'] ?? '',
+      createdBy: map['createdBy'] ?? '',
+      createdAt: map['createdAt'] is String 
+          ? DateTime.parse(map['createdAt']) 
+          : (map['createdAt'] as Timestamp).toDate(),
       splitType: map['splitType'] ?? 'equal',
+      splits: Map<String, double>.from(map['splits'] as Map<dynamic, dynamic>),
+      groupId: map['groupId'] ?? '',
     );
   }
-} 
+}

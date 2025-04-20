@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Settlement {
   final String id;
   final String groupId;
@@ -5,7 +7,7 @@ class Settlement {
   final String toUserId;
   final double amount;
   final DateTime createdAt;
-  final String? note;
+  final String createdBy;
 
   Settlement({
     required this.id,
@@ -14,7 +16,7 @@ class Settlement {
     required this.toUserId,
     required this.amount,
     required this.createdAt,
-    this.note,
+    required this.createdBy,
   });
 
   Map<String, dynamic> toMap() {
@@ -25,19 +27,21 @@ class Settlement {
       'toUserId': toUserId,
       'amount': amount,
       'createdAt': createdAt.toIso8601String(),
-      'note': note,
+      'createdBy': createdBy,
     };
   }
 
   factory Settlement.fromMap(Map<String, dynamic> map) {
     return Settlement(
-      id: map['id'],
-      groupId: map['groupId'],
-      fromUserId: map['fromUserId'],
-      toUserId: map['toUserId'],
-      amount: map['amount'].toDouble(),
-      createdAt: DateTime.parse(map['createdAt']),
-      note: map['note'],
+      id: map['id'] ?? '',
+      groupId: map['groupId'] ?? '',
+      fromUserId: map['fromUserId'] ?? '',
+      toUserId: map['toUserId'] ?? '',
+      amount: (map['amount'] as num).toDouble(),
+      createdAt: map['createdAt'] is String 
+          ? DateTime.parse(map['createdAt']) 
+          : (map['createdAt'] as Timestamp).toDate(),
+      createdBy: map['createdBy'] ?? '',
     );
   }
-} 
+}

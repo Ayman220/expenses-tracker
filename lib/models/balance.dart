@@ -8,7 +8,7 @@ class Balance {
   Balance({
     required this.groupId,
     required this.fromUserId,
-    required this.toUserId,
+    required this.toUserId, 
     required this.amount,
     required this.lastUpdated,
   });
@@ -25,11 +25,11 @@ class Balance {
 
   factory Balance.fromMap(Map<String, dynamic> map) {
     return Balance(
-      groupId: map['groupId'],
-      fromUserId: map['fromUserId'],
-      toUserId: map['toUserId'],
-      amount: map['amount'].toDouble(),
+      groupId: map['groupId'] ?? '',
+      fromUserId: map['fromUserId'] ?? '',
+      toUserId: map['toUserId'] ?? '',
+      amount: (map['amount'] as num).toDouble(),
       lastUpdated: DateTime.parse(map['lastUpdated']),
     );
   }
-} 
+}

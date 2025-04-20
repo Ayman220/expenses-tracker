@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:expense_tracker/helpers/snackbar.dart';
 import 'package:expense_tracker/services/database.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get/get.dart';
 
 class AddGroupScreen extends StatefulWidget {
   const AddGroupScreen({super.key});
@@ -55,15 +57,11 @@ class _AddGroupScreenState extends State<AddGroupScreen> {
       await _dbService.createGroup(groupName, user.uid);
 
       if (!mounted) return;
-      Navigator.pop(context, true);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Group '$groupName' created")));
+      showSuccessMessage("", "Group '$groupName' created");
+      Get.back();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+      showErrorMessage("Error", "Error: ${e.toString()}");
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -87,10 +85,11 @@ class _AddGroupScreenState extends State<AddGroupScreen> {
         appBar: AppBar(
           title: const Text('Create Group'),
           centerTitle: true,
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          elevation: 0,
+          scrolledUnderElevation: 0,
         ),
-        body: Padding(
+        body: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
           child: Column(
             children: [

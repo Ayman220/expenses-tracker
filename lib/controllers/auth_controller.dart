@@ -80,7 +80,6 @@ Future<UserCredential?> signInWithEmailAndPassword(
       }
       return null;
     } catch (e) {
-      print(e);
       showErrorMessage(
         'Error',
         'An unexpected error.... occurred: ${e.toString()}',

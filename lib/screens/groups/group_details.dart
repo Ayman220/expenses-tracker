@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:expense_tracker/screens/groups/expense_list.dart';
+import 'package:expense_tracker/screens/groups/group_balances.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:expense_tracker/screens/groups/add_member.dart';
+import 'package:expense_tracker/controllers/expense_controller.dart';
 
 class GroupDetails extends StatefulWidget {
   final String groupId;
@@ -25,7 +28,12 @@ class _GroupDetailsState extends State<GroupDetails> {
             .doc(widget.groupId)
             .get();
 
-    _memberInfoFuture = _fetchMemberInfo(); // Initialize here
+    _memberInfoFuture = _fetchMemberInfo();
+    
+    // Register the ExpenseController if not already registered
+    if (!Get.isRegistered<ExpenseController>()) {
+      Get.put(ExpenseController());
+    }
   }
 
   Future<List<Map<String, String>>> _fetchMemberInfo() async {
@@ -106,7 +114,7 @@ class _GroupDetailsState extends State<GroupDetails> {
           final groupData = snapshot.data!.data() as Map<String, dynamic>;
           final groupName = groupData['name'] ?? 'Unnamed Group';
 
-          return Padding(
+          return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,6 +242,131 @@ class _GroupDetailsState extends State<GroupDetails> {
                       },
                     ),
                   ],
+                ),
+                
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          Get.to(() => ExpenseList(
+                            groupId: widget.groupId,
+                            groupName: groupName,
+                          ));
+                        },
+                        icon: const Icon(Icons.list_alt),
+                        label: const Text('View Expenses'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Get.to(() => GroupBalances(
+                            groupId: widget.groupId,
+                          ));
+                        },
+                        icon: const Icon(Icons.account_balance_wallet),
+                        label: const Text('View Balances'),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 24),
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                    .collection('expenses')
+                    .where('groupId', isEqualTo: widget.groupId)
+                    .orderBy('createdAt', descending: true)
+                    .limit(3)
+                    .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    
+                    final expenses = snapshot.data?.docs ?? [];
+                    
+                    if (expenses.isEmpty) {
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'No expenses yet. Add an expense to get started!',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    }
+                    
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Recent Expenses',
+                              style: TextStyle(
+                                fontSize: 18, 
+                                fontWeight: FontWeight.w600
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Get.to(() => ExpenseList(
+                                  groupId: widget.groupId,
+                                  groupName: groupName,
+                                ));
+                              },
+                              child: const Text('View all'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ...expenses.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final description = data['description'] as String? ?? 'Unnamed expense';
+                          final amount = data['amount'] as double? ?? 0.0;
+                          final paidById = data['paidBy'] as String? ?? '';
+                          
+                          return FutureBuilder<DocumentSnapshot>(
+                            future: FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(paidById)
+                              .get(),
+                            builder: (context, userSnapshot) {
+                              String payerName = 'Unknown';
+                              if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                                final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                                payerName = userData?['name'] as String? ?? 'Unknown';
+                              }
+                              
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: ListTile(
+                                  title: Text(description),
+                                  subtitle: Text('Paid by $payerName'),
+                                  trailing: Text(
+                                    amount.toStringAsFixed(2),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        }),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),

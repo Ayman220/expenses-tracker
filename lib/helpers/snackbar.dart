@@ -10,7 +10,7 @@ void showSuccessMessage(String title, String message) {
     snackPosition: SnackPosition.TOP,
     borderRadius: 12,
     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-    duration: const Duration(seconds: 3),
+    duration: const Duration(seconds: 2),
   );
 }
 
@@ -23,7 +23,7 @@ void showErrorMessage(String title, String message) {
     snackPosition: SnackPosition.TOP,
     borderRadius: 12,
     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-    duration: const Duration(seconds: 40),
+    duration: const Duration(seconds: 2),
   );
 }
 
@@ -36,6 +36,6 @@ void showInfoMessage(String title, String message) {
     snackPosition: SnackPosition.TOP,
     borderRadius: 12,
     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-    duration: const Duration(seconds: 3),
+    duration: const Duration(seconds: 2),
   );
 }
