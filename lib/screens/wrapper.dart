@@ -1,5 +1,6 @@
 import 'package:expense_tracker/controllers/auth_controller.dart';
 import 'package:expense_tracker/screens/authentication/authenticate.dart';
+import 'package:expense_tracker/screens/authentication/verify_email.dart';
 import 'package:expense_tracker/screens/home/home.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -11,8 +12,23 @@ class Wrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
 
-    return Obx(() => authController.user.value == null
-        ? const Authenticate()
-        : const Home());
+    return Obx(() {
+      if (authController.isLoading.value) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+
+      final customUser = authController.user.value;
+      final firebaseUser = authController.firebaseUser;
+
+      if (customUser == null || firebaseUser == null) {
+        return const Authenticate();
+      }
+
+      if (!firebaseUser.emailVerified) {
+        return const VerifyEmailScreen();
+      }
+
+      return const Home();
+    });
   }
 }

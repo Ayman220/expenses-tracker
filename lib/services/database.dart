@@ -2,16 +2,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DatabaseService {
   // Collection reference
-  final CollectionReference groups = FirebaseFirestore.instance.collection("groups");
-  final CollectionReference users = FirebaseFirestore.instance.collection("users");
+  final CollectionReference groups = FirebaseFirestore.instance.collection(
+    "groups",
+  );
+  final CollectionReference users = FirebaseFirestore.instance.collection(
+    "users",
+  );
 
   Future<void> createUser(String name, String email, String userId) async {
-    await users.doc(userId)
-              .set({
-            'name': name,
-            'email': email,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
+    await users.doc(userId).set({
+      'name': name,
+      'email': email,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
   // Create a new group
@@ -56,7 +59,11 @@ class DatabaseService {
 
   // Get all expenses in a group
   Stream<QuerySnapshot> getGroupExpenses(String groupId) {
-    return groups.doc(groupId).collection("expenses").orderBy('timestamp', descending: true).snapshots();
+    return groups
+        .doc(groupId)
+        .collection("expenses")
+        .orderBy('timestamp', descending: true)
+        .snapshots();
   }
 
   // Settle payment between users

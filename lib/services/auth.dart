@@ -1,3 +1,4 @@
+import 'package:expense_tracker/helpers/snackbar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:expense_tracker/models/user.dart' as app_user;
 
@@ -14,7 +15,10 @@ class AuthService {
   }
 
   // sign in with email/password
-  Future<UserCredential?> signInWithEmailAndPassword(String email, String password) async {
+  Future<UserCredential?> signInWithEmailAndPassword(
+    String email,
+    String password,
+  ) async {
     try {
       return await _auth.signInWithEmailAndPassword(
         email: email,
@@ -26,7 +30,10 @@ class AuthService {
   }
 
   // register with email/password
-  Future<UserCredential?> registerWithEmailAndPassword(String email, String password) async {
+  Future<UserCredential?> registerWithEmailAndPassword(
+    String email,
+    String password,
+  ) async {
     try {
       return await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -35,6 +42,27 @@ class AuthService {
     } catch (e) {
       return null;
     }
+  }
+
+  Future<void> resendVerificationEmail() async {
+    try {
+      // Get the user from FirebaseAuth by uid
+      final user = _auth.currentUser;
+
+      // If no user is signed in or the UID does not match, return null
+      if (user == null) {
+        showErrorMessage("Error", "User not found.");
+        return;
+      }
+
+      // Check if the email is verified
+      if (!user.emailVerified) {
+        // Send the email verification again
+        await user.sendEmailVerification();
+      } else {
+        showErrorMessage("Error", "The email is already verified.");
+      }
+    } catch (_) {}
   }
 
   // logout
