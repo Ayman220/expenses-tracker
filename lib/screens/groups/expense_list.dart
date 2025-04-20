@@ -63,108 +63,107 @@ class ExpenseList extends StatelessWidget {
             );
           }
 
-          return SingleChildScrollView(
-            child: ListView.builder(
-              itemCount: expenses.length,
-              itemBuilder: (context, index) {
-                final expenseDoc = expenses[index];
-                final data = expenseDoc.data() as Map<String, dynamic>;
-                final description =
-                    data['description'] as String? ?? 'Unnamed expense';
-                final amount = data['amount'] as double? ?? 0.0;
-                final paidById = data['paidBy'] as String? ?? '';
-                final createdAt = data['createdAt'];
-                final timestamp =
-                    createdAt is Timestamp
-                        ? createdAt
-                        : (createdAt is String
-                            ? Timestamp.fromDate(DateTime.parse(createdAt))
-                            : null);
-
-                final date =
-                    timestamp != null
-                        ? DateFormat('MMM d, yyyy').format(timestamp.toDate())
-                        : 'Unknown date';
-
-                return FutureBuilder<DocumentSnapshot>(
-                  future:
-                      FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(paidById)
-                          .get(),
-                  builder: (context, userSnapshot) {
-                    String payerName = 'Unknown';
-                    if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                      final userData =
-                          userSnapshot.data!.data() as Map<String, dynamic>?;
-                      payerName = userData?['name'] as String? ?? 'Unknown';
-                    }
-
-                    return Dismissible(
-                      key: Key(expenseDoc.id),
-                      background: Container(
-                        color: Colors.red,
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 20),
-                        child: const Icon(Icons.delete, color: Colors.white),
-                      ),
-                      direction: DismissDirection.endToStart,
-                      confirmDismiss: (direction) async {
-                        return await showDialog<bool>(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return AlertDialog(
-                              title: const Text('Delete Expense'),
-                              content: const Text(
-                                'Are you sure you want to delete this expense? This will also update all balances.',
-                              ),
-                              actions: <Widget>[
-                                TextButton(
-                                  onPressed:
-                                      () => Navigator.of(context).pop(false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed:
-                                      () => Navigator.of(context).pop(true),
-                                  child: const Text('Delete'),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                      onDismissed: (direction) {
-                        expenseController.deleteExpense(expenseDoc.id, groupId);
-                      },
-                      child: Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: ListTile(
-                          leading: const CircleAvatar(
-                            child: Icon(Icons.receipt),
-                          ),
-                          title: Text(description),
-                          subtitle: Text('Paid by $payerName • $date'),
-                          trailing: Text(
-                            amount.toStringAsFixed(2),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+          return ListView.builder(
+            shrinkWrap: true,
+            itemCount: expenses.length,
+            itemBuilder: (context, index) {
+              final expenseDoc = expenses[index];
+              final data = expenseDoc.data() as Map<String, dynamic>;
+              final description =
+                  data['description'] as String? ?? 'Unnamed expense';
+              final amount = data['amount'] as double? ?? 0.0;
+              final paidById = data['paidBy'] as String? ?? '';
+              final createdAt = data['createdAt'];
+              final timestamp =
+                  createdAt is Timestamp
+                      ? createdAt
+                      : (createdAt is String
+                          ? Timestamp.fromDate(DateTime.parse(createdAt))
+                          : null);
+          
+              final date =
+                  timestamp != null
+                      ? DateFormat('MMM d, yyyy').format(timestamp.toDate())
+                      : 'Unknown date';
+          
+              return FutureBuilder<DocumentSnapshot>(
+                future:
+                    FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(paidById)
+                        .get(),
+                builder: (context, userSnapshot) {
+                  String payerName = 'Unknown';
+                  if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                    final userData =
+                        userSnapshot.data!.data() as Map<String, dynamic>?;
+                    payerName = userData?['name'] as String? ?? 'Unknown';
+                  }
+          
+                  return Dismissible(
+                    key: Key(expenseDoc.id),
+                    background: Container(
+                      color: Colors.red,
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      child: const Icon(Icons.delete, color: Colors.white),
+                    ),
+                    direction: DismissDirection.endToStart,
+                    confirmDismiss: (direction) async {
+                      return await showDialog<bool>(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('Delete Expense'),
+                            content: const Text(
+                              'Are you sure you want to delete this expense? This will also update all balances.',
                             ),
-                          ),
-                          onTap: () {
-                            _showExpenseDetails(context, data, payerName);
-                          },
-                        ),
+                            actions: <Widget>[
+                              TextButton(
+                                onPressed:
+                                    () => Navigator.of(context).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed:
+                                    () => Navigator.of(context).pop(true),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    onDismissed: (direction) {
+                      expenseController.deleteExpense(expenseDoc.id, groupId);
+                    },
+                    child: Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
                       ),
-                    );
-                  },
-                );
-              },
-            ),
+                      child: ListTile(
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.receipt),
+                        ),
+                        title: Text(description),
+                        subtitle: Text('Paid by $payerName • $date'),
+                        trailing: Text(
+                          amount.toStringAsFixed(2),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        onTap: () {
+                          _showExpenseDetails(context, data, payerName);
+                        },
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           );
         },
       ),
